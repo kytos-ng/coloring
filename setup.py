@@ -185,6 +185,16 @@ class KytosInstall:
             dst = INSTALLED_PATH / napp_path
             symlink_if_different(src, dst)
 
+    @staticmethod
+    def install_core_napps():
+        """Install a NAPP."""
+        for napp in CORE_NAPPS:
+            napp_path = Path('kytos', napp)
+            dst = INSTALLED_PATH / napp_path
+            dst.mkdir(parents=True, exist_ok=True)
+            install_cmd = f'git clone https://github.com/kytos/{napp}.git {dst}'
+            check_call(install_cmd, shell=True)
+
 
 class InstallMode(install):
     """Create files in var/lib/kytos."""
@@ -229,6 +239,7 @@ class DevelopMode(develop):
         else:
             self._create_folder_symlinks()
             # self._create_file_symlinks()
+            KytosInstall.install_core_napps()
             KytosInstall.enable_core_napps()
 
     @staticmethod
@@ -243,6 +254,10 @@ class DevelopMode(develop):
         code = CURRENT_DIR
         src = links / NAPP_NAME
         symlink_if_different(src, code)
+
+        (ENABLED_PATH / 'amlight').mkdir(parents=True, exist_ok=True)
+        dst = ENABLED_PATH / Path('amlight', NAPP_NAME)
+        symlink_if_different(dst, src)
 
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         dst = ENABLED_PATH / Path('kytos', NAPP_NAME)
@@ -269,7 +284,7 @@ def symlink_if_different(path, target):
         path.symlink_to(target)
 
 
-setup(name=f'kytos_{NAPP_NAME}',
+setup(name=f'amlight_{NAPP_NAME}',
       version=NAPP_VERSION,
       description='Amlight NApps',
       url='http://github.com/amlight/{NAPP_NAME}',
