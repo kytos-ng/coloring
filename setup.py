@@ -156,7 +156,7 @@ class Linter(SimpleCommand):
         except RuntimeError as error:
             print('Linter check failed. Fix the error(s) above and try again.')
             print(error)
-            exit(-1)
+            sys.exit(-1)
 
 
 class CITest(TestCommand):
@@ -192,7 +192,8 @@ class KytosInstall:
             napp_path = Path('kytos', napp)
             dst = INSTALLED_PATH / napp_path
             dst.mkdir(parents=True, exist_ok=True)
-            install_cmd = f'git clone https://github.com/kytos/{napp}.git {dst}'
+            install_cmd = \
+                f'git clone https://github.com/kytos/{napp}.git {dst}'
             check_call(install_cmd, shell=True)
 
 

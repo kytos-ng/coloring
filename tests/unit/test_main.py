@@ -1,7 +1,10 @@
+"""Test the Main class."""
 from unittest import TestCase
 
 from napps.amlight.coloring.main import Main
+
 from tests.helpers import get_controller_mock
+
 
 class TestMain(TestCase):
     """Test the Main class."""
