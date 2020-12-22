@@ -53,3 +53,14 @@ class TestMain(TestCase):
 
         self.napp.update_colors(links)
         self.assertEqual(req_post_mock.call_count, 2)
+
+        links = [
+            {
+                'endpoint_a': {'switch': switch1.dpid},
+                'endpoint_b': {'switch': switch1.dpid}
+            }
+        ]
+
+        req_post_mock.reset_mock()
+        self.napp.update_colors(links)
+        req_post_mock.assert_not_called()
