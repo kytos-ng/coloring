@@ -5,6 +5,7 @@ NApp to color a network topology
 # Check for import order disabled in pylint due to conflict
 # with isort.
 # pylint: disable=wrong-import-order
+# isort:skip_file
 import struct
 
 import requests
