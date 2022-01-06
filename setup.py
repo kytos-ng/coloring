@@ -271,6 +271,16 @@ def symlink_if_different(path, target):
         path.symlink_to(target)
 
 
+def read_requirements(path="requirements/run.txt"):
+    """Read requirements file and return a list."""
+    with open(path, "r", encoding="utf8") as file:
+        return [
+            line.strip()
+            for line in file.readlines()
+            if not line.startswith("#")
+        ]
+
+
 setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       version=NAPP_VERSION,
       description='Amlight NApps',
@@ -278,7 +288,7 @@ setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       author='Amlight Team',
       author_email='antonio@amlight.net',
       license='MIT',
-      install_requires=['kytos'],
+      install_requires=read_requirements(),
       setup_requires=['pytest-runner'],
       tests_require=['pytest'],
       extras_require={
