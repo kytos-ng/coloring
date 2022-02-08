@@ -23,7 +23,7 @@ BASE_ENV = Path(os.environ.get('VIRTUAL_ENV', '/'))
 
 NAPP_NAME = 'coloring'
 NAPP_USERNAME = 'amlight'
-NAPP_VERSION = '0.1'
+NAPP_VERSION = '2022.1.0'
 
 # Kytos var folder
 VAR_PATH = BASE_ENV / 'var' / 'lib' / 'kytos'
