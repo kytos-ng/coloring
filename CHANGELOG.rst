@@ -26,5 +26,6 @@ Security
 [2022.1.0] - 2022-02-08
 ***********************
 
-First bumped version
-
+Added
+=====
+- Enhanced and standardized setup.py `install_requires` to install pinned dependencies
