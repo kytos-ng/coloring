@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 from napps.amlight.coloring.main import Main
 
-from tests.helpers import get_controller_mock
+from napps.amlight.coloring.tests.helpers import get_controller_mock
 
 
 class TestMain(TestCase):

@@ -4,7 +4,7 @@
 #
 #    pip-compile --output-file=requirements/dev.txt requirements/dev.in
 #
--e file:///mnt/c/projetos/kytos/rmotitsuki/coloring
+-e .
     # via -r requirements/dev.in
 -e git+https://github.com/kytos-ng/kytos.git#egg=kytos
     # via -r requirements/dev.in
