@@ -2,3 +2,6 @@
 -e git+https://github.com/kytos-ng/kytos.git#egg=kytos
 -e git+https://github.com/kytos-ng/of_core.git#egg=kytos-of_core
 -e .[dev]
+
+urllib3==1.26.9
+charset-normalizer==2.0.12
