@@ -179,10 +179,10 @@ class CITest(TestCommand):
 
     def run(self):
         """Run unit tests with coverage, doc tests and linter."""
-        coverage_cmd = f"python3.6 setup.py coverage {0}".format(
+        coverage_cmd = f"python3 setup.py coverage {0}".format(
             self.get_args()
         )
-        lint_cmd = "python3.6 setup.py lint"
+        lint_cmd = "python3 setup.py lint"
         cmd = f"{0} && {1}".format(coverage_cmd, lint_cmd)
         check_call(cmd, shell=True)
 
@@ -283,6 +283,16 @@ class DevelopMode(develop):
         symlink_if_different(src, dst)
 
 
+def read_requirements(path="requirements/run.txt"):
+    """Read requirements file and return a list."""
+    with open(path, "r", encoding="utf8") as file:
+        return [
+            line.strip()
+            for line in file.readlines()
+            if not line.startswith("#")
+        ]
+
+
 def symlink_if_different(path, target):
     """Force symlink creation if it points anywhere else."""
     # print(f"symlinking {path} to target: {target}...", end=" ")
@@ -296,26 +306,17 @@ def symlink_if_different(path, target):
         path.symlink_to(target)
 
 
-def read_requirements(path="requirements/run.txt"):
-    """Read requirements file and return a list."""
-    with open(path, "r", encoding="utf8") as file:
-        return [
-            line.strip()
-            for line in file.readlines()
-            if not line.startswith("#")
-        ]
-
-
 setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       version=NAPP_VERSION,
       description='Amlight NApps',
-      url='http://github.com/kytos-ng/{NAPP_NAME}',
+      url='http://github.com/kytos-ng/coloring',
       author='Amlight Team',
       author_email='antonio@amlight.net',
       license='MIT',
-      install_requires=read_requirements(),
+      install_requires=read_requirements() + ["setuptools >= 59.6.0"],
+      packages=[],
       setup_requires=['pytest-runner'],
-      tests_require=['pytest'],
+      tests_require=["pytest==7.0.0"],
       extras_require={
           'dev': [
               'coverage',
@@ -338,6 +339,6 @@ setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       classifiers=[
           'License :: OSI Approved :: MIT License',
           'Operating System :: POSIX :: Linux',
-          'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.9',
           'Topic :: System :: Networking',
       ])
