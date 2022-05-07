@@ -308,17 +308,17 @@ def symlink_if_different(path, target):
 
 setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       version=NAPP_VERSION,
-      description='Amlight NApps',
+      description='Amlight Coloring NApps',
       url='http://github.com/kytos-ng/coloring',
       author='Amlight Team',
       author_email='antonio@amlight.net',
       license='MIT',
       install_requires=read_requirements() + ["setuptools >= 59.6.0"],
       packages=[],
-      setup_requires=['pytest-runner'],
-      tests_require=["pytest==7.0.0"],
       extras_require={
           'dev': [
+              'pytest==7.0.0',
+              'pytest-runner',
               'coverage',
               'pip-tools',
               'yala',

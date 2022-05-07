@@ -6,7 +6,7 @@
 #
 certifi==2021.10.8
     # via requests
-charset-normalizer==2.0.12
+charset-normalizer==2.0.10
     # via
     #   -r requirements/run.in
     #   requests
@@ -14,7 +14,7 @@ idna==3.3
     # via requests
 requests==2.27.0
     # via -r requirements/run.in
-urllib3==1.26.9
+urllib3==1.26.7
     # via
     #   -r requirements/run.in
     #   requests
