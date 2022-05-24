@@ -196,7 +196,7 @@ typing-extensions==4.0.1
     #   kytos
     #   pydantic
     #   pylint
-urllib3==1.26.9
+urllib3==1.26.7
     # via
     #   amlight-coloring
     #   requests
