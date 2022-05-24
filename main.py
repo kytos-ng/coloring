@@ -102,8 +102,7 @@ class Main(KytosNApp):
                     )
                     if returned.status_code // 100 != 2:
                         log.error('Flow manager returned an error inserting '
-                                  'flow. Status code %s' %
-                                  (returned.status_code,))
+                                  f'flow. Status code {returned.status_code}')
 
     def shutdown(self):
         """This method is executed when your napp is unloaded.
@@ -123,7 +122,7 @@ class Main(KytosNApp):
         if field in ('dl_src', 'dl_dst'):
             color_48bits = color & 0xffffffffffffffff
             int_mac = struct.pack('!Q', color_48bits)[2:]
-            color_value = ':'.join(['%02x' % b for b in int_mac])
+            color_value = ':'.join([f'{b:02x}' for b in int_mac])
             return color_value.replace('00', 'ee')
         if field in ('nw_src', 'nw_dst'):
             color_32bits = color & 0xffffffff
@@ -154,7 +153,7 @@ class Main(KytosNApp):
             Return:
             SETTINGS in JSON format
         """
-        settings_dict = dict()
+        settings_dict = {}
         settings_dict['color_field'] = settings.COLOR_FIELD
         settings_dict['coloring_interval'] = settings.COLORING_INTERVAL
         settings_dict['topology_url'] = settings.TOPOLOGY_URL
