@@ -117,9 +117,30 @@ class TestMain(TestCase):
             }
         ]
 
+        self.assertEqual(self.napp.switches, {})
         self.napp.update_colors(links)
+
+        # Verify installed flows with colors
+        self.assertTrue(len(self.napp.switches) == 2)
+        self.assertEqual(
+            self.napp.switches['00:00:00:00:00:00:00:01']['color'], 1)
+        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:01']
+                         ['flows']['00:00:00:00:00:00:00:02']['match']
+                         ['dl_src']),
+                         'ee:ee:ee:ee:ee:02')
+        self.assertEqual(
+            self.napp.switches['00:00:00:00:00:00:00:02']['color'], 2)
+
+        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:02']
+                         ['flows']['00:00:00:00:00:00:00:01']['match']
+                         ['dl_src']),
+                         'ee:ee:ee:ee:ee:01')
+
+        # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
         self.assertEqual(req_post_mock.call_count, 2)
 
+        # Next test we verify that the napp will not search
+        # switch data again, because it is already cached.
         links = [
             {
                 'endpoint_a': {'switch': switch1.dpid},
@@ -130,3 +151,67 @@ class TestMain(TestCase):
         req_post_mock.reset_mock()
         self.napp.update_colors(links)
         req_post_mock.assert_not_called()
+
+    def test_update_colors_without_links(self):
+        """Test method update_colors without links."""
+        switch1 = Mock()
+        switch1.dpid = '00:00:00:00:00:00:00:01'
+        switch1.ofp_version = '0x04'
+        switch2 = Mock()
+        switch2.dpid = '00:00:00:00:00:00:00:02'
+        switch2.ofp_version = '0x04'
+
+        self.napp.controller.switches = {'1': switch1, '2': switch2}
+
+        def switch_by_dpid(dpid):
+            if dpid == '00:00:00:00:00:00:00:01':
+                return switch1
+            if dpid == '00:00:00:00:00:00:00:02':
+                return switch2
+            return None
+        self.napp.controller.get_switch_by_dpid = \
+            Mock(side_effect=switch_by_dpid)
+
+        self.napp.update_colors([])
+
+        # Verify installed flows with colors
+        self.assertTrue(len(self.napp.switches) == 2)
+
+        self.assertEqual(
+            self.napp.switches['00:00:00:00:00:00:00:01']['color'], 1)
+        self.assertEqual((self.napp.switches
+                          ['00:00:00:00:00:00:00:01']['flows']), {})
+        self.assertEqual(
+            self.napp.switches['00:00:00:00:00:00:00:02']['color'], 2)
+        self.assertEqual((self.napp.switches
+                          ['00:00:00:00:00:00:00:02']['flows']), {})
+
+    def test_rest_colors(self):
+        """ Test rest call to /colors to retrieve all switches color. """
+        switch1 = {'dpid': '00:00:00:00:00:00:00:01',
+                   'ofp_version': '0x04',
+                   'color': 300}
+        self.napp.switches = {'1': switch1}
+
+        # Call rest /colors
+        api = get_test_client(self.napp.controller, self.napp)
+        url = f'{self.server_name_url}/colors'
+        response = api.get(url)
+        json_response = json.loads(response.data)
+
+        self.assertEqual(json_response['colors']['1']['color_field'],
+                         'dl_src')
+        self.assertEqual(json_response['colors']['1']['color_value'],
+                         'ee:ee:ee:ee:01:2c')
+
+    def test_rest_colors_without_switches(self):
+        """ Test rest call to /colors without switches. """
+        self.napp.switches = {}
+
+        # Call rest /colors
+        api = get_test_client(self.napp.controller, self.napp)
+        url = f'{self.server_name_url}/colors'
+        response = api.get(url)
+        json_response = json.loads(response.data)
+
+        self.assertEqual(json_response['colors'], {})
