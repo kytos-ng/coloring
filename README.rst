@@ -1,4 +1,4 @@
-|Tag| |License|
+|Tag| |License| |Build| |Coverage| |Quality|
 
 .. raw:: html
 
@@ -22,7 +22,7 @@ packets with a neighbors' color.
 Requirements
 ============
 
-- `amlight/flow_stats <https://github.com/amlight/flow_stats>`_
+- `amlight/flow_stats <https://github.com/kytos-ng/flow_stats>`_
 - `kytos/flow_manager <https://github.com/kytos-ng/flow_manager>`_
 
 Events
@@ -37,16 +37,16 @@ Subscribed
 
 .. |License| image:: https://img.shields.io/github/license/kytos-ng/kytos.svg
    :target: https://github.com/kytos-ng/kytos/blob/master/LICENSE
-.. |Build| image:: https://scrutinizer-ci.com/g/amlight/coloring/badges/build.png?b=master
+.. |Build| image:: https://scrutinizer-ci.com/g/kytos-ng/coloring/badges/build.png?b=master
   :alt: Build status
-  :target: https://scrutinizer-ci.com/g/amlight/coloring/?branch=master
-.. |Coverage| image:: https://scrutinizer-ci.com/g/amlight/coloring/badges/coverage.png?b=master
+  :target: https://scrutinizer-ci.com/g/kytos-ng/coloring/?branch=master
+.. |Coverage| image:: https://scrutinizer-ci.com/g/kytos-ng/coloring/badges/coverage.png?b=master
   :alt: Code coverage
-  :target: https://scrutinizer-ci.com/g/amlight/coloring/?branch=master
-.. |Quality| image:: https://scrutinizer-ci.com/g/amlight/coloring/badges/quality-score.png?b=master
+  :target: https://scrutinizer-ci.com/g/kytos-ng/coloring/?branch=master
+.. |Quality| image:: https://scrutinizer-ci.com/g/kytos-ng/coloring/badges/quality-score.png?b=master
   :alt: Code-quality score
-  :target: https://scrutinizer-ci.com/g/amlight/coloring/?branch=master
+  :target: https://scrutinizer-ci.com/g/kytos-ng/coloring/?branch=master
 .. |Stable| image:: https://img.shields.io/badge/stability-stable-green.svg
-   :target: https://github.com/amlight/coloring
-.. |Tag| image:: https://img.shields.io/github/tag/amlight/coloring.svg
-   :target: https://github.com/amlight/coloring/tags
+   :target: https://github.com/kytos-ng/coloring
+.. |Tag| image:: https://img.shields.io/github/tag/kytos-ng/coloring.svg
+   :target: https://github.com/kytos-ng/coloring/tags
