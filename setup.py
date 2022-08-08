@@ -3,6 +3,7 @@
 Run "python3 setup.py --help-commands" to list all available commands and their
 descriptions.
 """
+import json
 import os
 import shutil
 import sys
@@ -23,7 +24,6 @@ BASE_ENV = Path(os.environ.get('VIRTUAL_ENV', '/'))
 
 NAPP_NAME = 'coloring'
 NAPP_USERNAME = 'amlight'
-NAPP_VERSION = '2022.1.0'
 
 # Kytos var folder
 VAR_PATH = BASE_ENV / 'var' / 'lib' / 'kytos'
@@ -237,6 +237,13 @@ class DevelopMode(develop):
         symlink_if_different(src, dst)
 
 
+def read_version_from_json():
+    """Read the NApp version from NApp kytos.json file."""
+    file = Path('kytos.json')
+    metadata = json.loads(file.read_text())
+    return metadata['version']
+
+
 def read_requirements(path="requirements/run.txt"):
     """Read requirements file and return a list."""
     with open(path, "r", encoding="utf8") as file:
@@ -261,7 +268,7 @@ def symlink_if_different(path, target):
 
 
 setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
-      version=NAPP_VERSION,
+      version=read_version_from_json(),
       description='Amlight Coloring NApps',
       url='http://github.com/kytos-ng/coloring',
       author='Amlight Team',
