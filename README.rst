@@ -19,6 +19,17 @@ After picking a color for each switch, installs high
 priority flows in each switch, that send to the controller
 packets with a neighbors' color.
 
+Installing
+==========
+
+To install this NApp, make sure to have the same venv activated as you have ``kytos`` installed on:
+
+.. code:: shell
+
+   $ git clone https://github.com/kytos-ng/coloring.git
+   $ cd coloring
+   $ python3 setup.py develop
+
 Requirements
 ============
 
