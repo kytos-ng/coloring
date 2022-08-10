@@ -23,6 +23,13 @@ Fixed
 Security
 ========
 
+[2022.2.0] - 2022-08-08
+***********************
+
+General Information
+===================
+- Increased unit test coverage to at least 85%
+
 [2022.1.0] - 2022-02-08
 ***********************
 
