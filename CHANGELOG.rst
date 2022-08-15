@@ -23,6 +23,14 @@ Fixed
 Security
 ========
 
+[2022.2.1] - 2022-08-15
+***********************
+
+Fixed
+=====
+- Protected shared iterables from size changed thread RuntimeError
+
+
 [2022.2.0] - 2022-08-08
 ***********************
 
