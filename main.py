@@ -7,6 +7,8 @@ NApp to color a network topology
 # pylint: disable=wrong-import-order
 # isort:skip_file
 import struct
+from threading import Lock
+from collections import defaultdict
 
 import requests
 from flask import jsonify
@@ -32,7 +34,9 @@ class Main(KytosNApp):
         So, if you have any setup routine, insert it here.
         """
         self.switches = {}
-        self.execute_as_loop(1)
+        self._switches_lock = Lock()
+        self._flow_manager_url = settings.FLOW_MANAGER_URL
+        self._color_field = settings.COLOR_FIELD
 
     def execute(self):
         """ Topology updates are executed through events. """
@@ -51,58 +55,57 @@ class Main(KytosNApp):
             with the color of its neighbors, to send probe packets to the
             controller.
         """
-        url = settings.FLOW_MANAGER_URL
+        with self._switches_lock:
+            for switch in self.controller.switches.copy().values():
+                if switch.dpid not in self.switches:
+                    color = int(switch.dpid.replace(':', '')[4:], 16)
+                    self.switches[switch.dpid] = {'color': color,
+                                                  'neighbors': set(),
+                                                  'flows': {}}
+                else:
+                    self.switches[switch.dpid]['neighbors'] = set()
 
-        for switch in self.controller.switches.values():
-            if switch.dpid not in self.switches:
-                color = int(switch.dpid.replace(':', '')[4:], 16)
-                self.switches[switch.dpid] = {'color': color,
-                                              'neighbors': set(),
-                                              'flows': {}}
-            else:
-                self.switches[switch.dpid]['neighbors'] = set()
+            for link in links:
+                source = link['endpoint_a']['switch']
+                target = link['endpoint_b']['switch']
+                if source != target:
+                    self.switches[source]['neighbors'].add(target)
+                    self.switches[target]['neighbors'].add(source)
 
-        for link in links:
-            source = link['endpoint_a']['switch']
-            target = link['endpoint_b']['switch']
-            if source != target:
-                self.switches[source]['neighbors'].add(target)
-                self.switches[target]['neighbors'].add(source)
+        dpid_flows = defaultdict(list)
 
         # Create the flows for each neighbor of each switch and installs it
         # if not already installed
-        for dpid, switch_dict in self.switches.items():
-            switch = self.controller.get_switch_by_dpid(dpid)
-            if switch.ofp_version == '0x01':
-                controller_port = Port.OFPP_CONTROLLER
-            elif switch.ofp_version == '0x04':
-                controller_port = PortNo.OFPP_CONTROLLER
-            else:
-                continue
-            for neighbor in switch_dict['neighbors']:
-                if neighbor not in switch_dict['flows']:
-                    flow_dict = {
-                        'table_id': 0,
-                        'match': {},
-                        'priority': 50000,
-                        'actions': [
-                            {'action_type': 'output', 'port': controller_port}
-                        ]}
+        with self._switches_lock:
+            for dpid, switch_dict in self.switches.items():
+                switch = self.controller.get_switch_by_dpid(dpid)
+                if switch.ofp_version == '0x01':
+                    controller_port = Port.OFPP_CONTROLLER
+                elif switch.ofp_version == '0x04':
+                    controller_port = PortNo.OFPP_CONTROLLER
+                else:
+                    continue
+                for neighbor in switch_dict['neighbors']:
+                    if neighbor not in switch_dict['flows']:
+                        flow_dict = {
+                            'table_id': 0,
+                            'match': {},
+                            'priority': 50000,
+                            'actions': [
+                                {'action_type': 'output',
+                                 'port': controller_port}
+                            ]}
 
-                    flow_dict['match'][settings.COLOR_FIELD] = \
-                        self.color_to_field(
-                            self.switches[neighbor]['color'],
-                            settings.COLOR_FIELD
-                        )
+                        flow_dict['match'][self._color_field] = \
+                            self.color_to_field(
+                                self.switches[neighbor]['color'],
+                                self._color_field
+                            )
 
-                    switch_dict['flows'][neighbor] = flow_dict
-                    returned = requests.post(
-                        url % dpid,
-                        json={'flows': [flow_dict]}
-                    )
-                    if returned.status_code // 100 != 2:
-                        log.error('Flow manager returned an error inserting '
-                                  f'flow. Status code {returned.status_code}')
+                        switch_dict['flows'][neighbor] = flow_dict
+                        dpid_flows[dpid].append(flow_dict)
+
+        self._send_flow_mods(dpid_flows)
 
     def shutdown(self):
         """This method is executed when your napp is unloaded.
@@ -134,17 +137,34 @@ class Main(KytosNApp):
             return color & 0xff
         return color & 0xff
 
+    def _switch_colors(self) -> dict:
+        """Build switch colors dict."""
+        with self._switches_lock:
+            colors = {}
+            for dpid, switch_dict in self.switches.items():
+                colors[dpid] = {'color_field': self._color_field,
+                                'color_value': self.color_to_field(
+                                    switch_dict['color'],
+                                    field=self._color_field
+                                )}
+            return colors
+
+    def _send_flow_mods(self, dpid_flows: dict) -> None:
+        """Send FlowMods."""
+        for dpid, flows in dpid_flows.items():
+            res = requests.post(
+                self._flow_manager_url % dpid,
+                json={'flows': flows, 'force': True}
+            )
+            if res.status_code // 100 != 2:
+                log.error(f'Flow manager returned an error inserting '
+                          f'flows {flows}. Status code {res.status_code} '
+                          f'on dpid {dpid}')
+
     @rest('colors')
     def rest_colors(self):
         """ List of switch colors."""
-        colors = {}
-        for dpid, switch_dict in self.switches.items():
-            colors[dpid] = {'color_field': settings.COLOR_FIELD,
-                            'color_value': self.color_to_field(
-                                switch_dict['color'],
-                                settings.COLOR_FIELD
-                            )}
-        return jsonify({'colors': colors})
+        return jsonify({'colors': self._switch_colors()})
 
     @staticmethod
     @rest('/settings', methods=['GET'])
