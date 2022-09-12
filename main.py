@@ -149,6 +149,7 @@ class Main(KytosNApp):
                                 )}
             return colors
 
+    # pylint: disable=missing-timeout
     def _send_flow_mods(self, dpid_flows: dict) -> None:
         """Send FlowMods."""
         for dpid, flows in dpid_flows.items():
