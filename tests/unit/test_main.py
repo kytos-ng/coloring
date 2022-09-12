@@ -4,10 +4,8 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 
-from kytos.lib.helpers import (get_test_client)
+from kytos.lib.helpers import get_test_client, get_controller_mock
 from napps.amlight.coloring.main import Main
-
-from napps.amlight.coloring.tests.helpers import get_controller_mock
 
 
 class TestMain(TestCase):
