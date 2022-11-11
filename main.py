@@ -15,7 +15,6 @@ from flask import jsonify
 from kytos.core import KytosNApp, log, rest
 from kytos.core.helpers import listen_to
 from napps.amlight.coloring import settings
-from pyof.v0x01.common.phy_port import Port
 from pyof.v0x04.common.port import PortNo
 
 
@@ -79,9 +78,7 @@ class Main(KytosNApp):
         with self._switches_lock:
             for dpid, switch_dict in self.switches.items():
                 switch = self.controller.get_switch_by_dpid(dpid)
-                if switch.ofp_version == '0x01':
-                    controller_port = Port.OFPP_CONTROLLER
-                elif switch.ofp_version == '0x04':
+                if switch.ofp_version == '0x04':
                     controller_port = PortNo.OFPP_CONTROLLER
                 else:
                     continue
@@ -94,7 +91,8 @@ class Main(KytosNApp):
                             'actions': [
                                 {'action_type': 'output',
                                  'port': controller_port}
-                            ]}
+                            ],
+                            'cookie': self.get_cookie(dpid)}
 
                         flow_dict['match'][self._color_field] = \
                             self.color_to_field(
@@ -180,3 +178,9 @@ class Main(KytosNApp):
         settings_dict['topology_url'] = settings.TOPOLOGY_URL
         settings_dict['flow_manager_url'] = settings.FLOW_MANAGER_URL
         return jsonify(settings_dict)
+
+    @staticmethod
+    def get_cookie(dpid):
+        """Get cookie integer"""
+        return (int(dpid.replace(":", ""), 16)) + \
+               (settings.COOKIE_PREFIX << 56)
