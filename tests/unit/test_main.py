@@ -126,13 +126,19 @@ class TestMain(TestCase):
                          ['flows']['00:00:00:00:00:00:00:02']['match']
                          ['dl_src']),
                          'ee:ee:ee:ee:ee:02')
+        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:01']
+                         ['flows']['00:00:00:00:00:00:00:02']['cookie']),
+                         self.napp.get_cookie(switch1.dpid))
+
         self.assertEqual(
             self.napp.switches['00:00:00:00:00:00:00:02']['color'], 2)
-
         self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:02']
                          ['flows']['00:00:00:00:00:00:00:01']['match']
                          ['dl_src']),
                          'ee:ee:ee:ee:ee:01')
+        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:02']
+                         ['flows']['00:00:00:00:00:00:00:01']['cookie']),
+                         self.napp.get_cookie(switch2.dpid))
 
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
         self.assertEqual(req_post_mock.call_count, 2)
@@ -196,7 +202,6 @@ class TestMain(TestCase):
         url = f'{self.server_name_url}/colors'
         response = api.get(url)
         json_response = json.loads(response.data)
-
         self.assertEqual(json_response['colors']['1']['color_field'],
                          'dl_src')
         self.assertEqual(json_response['colors']['1']['color_value'],
