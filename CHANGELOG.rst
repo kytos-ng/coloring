@@ -7,6 +7,7 @@ All notable changes to the coloring NApp will be documented in this file.
 ********************************
 Added
 =====
+- Added cookie pattern to flow_mod prefix
 
 Changed
 =======
