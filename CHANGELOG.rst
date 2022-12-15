@@ -5,24 +5,13 @@ All notable changes to the coloring NApp will be documented in this file.
 
 [UNRELEASED] - Under development
 ********************************
+
+[2022.3.0] - 2022-12-15
+***********************
+
 Added
 =====
 - Added cookie pattern to flow_mod prefix
-
-Changed
-=======
-
-Deprecated
-==========
-
-Removed
-=======
-
-Fixed
-=====
-
-Security
-========
 
 [2022.2.1] - 2022-08-15
 ***********************
