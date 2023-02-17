@@ -181,6 +181,6 @@ class Main(KytosNApp):
 
     @staticmethod
     def get_cookie(dpid):
-        """Get cookie integer"""
-        return (int(dpid.replace(":", ""), 16)) + \
-               (settings.COOKIE_PREFIX << 56)
+        """Get 8-byte integer cookie."""
+        int_dpid = int(dpid.replace(":", ""), 16)
+        return (0x00FFFFFFFFFFFFFF & int_dpid) | (settings.COOKIE_PREFIX << 56)
