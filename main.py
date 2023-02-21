@@ -15,6 +15,7 @@ from flask import jsonify
 from kytos.core import KytosNApp, log, rest
 from kytos.core.helpers import listen_to
 from napps.amlight.coloring import settings
+from napps.amlight.coloring.utils import make_unicast_local_mac
 from pyof.v0x04.common.port import PortNo
 
 
@@ -121,10 +122,10 @@ class Main(KytosNApp):
         :return: A representation of the color suitable for the given field
         """
         if field in ('dl_src', 'dl_dst'):
-            color_48bits = color & 0xffffffffffffffff
-            int_mac = struct.pack('!Q', color_48bits)[2:]
-            color_value = ':'.join([f'{b:02x}' for b in int_mac])
-            return color_value.replace('00', 'ee')
+            color_64bits = color & 0xffffffffffffffff
+            int_mac_6bytes = struct.pack('!Q', color_64bits)[2:]
+            color_value = ':'.join([f'{b:02x}' for b in int_mac_6bytes])
+            return make_unicast_local_mac(color_value.replace('00', 'ee'))
         if field in ('nw_src', 'nw_dst'):
             color_32bits = color & 0xffffffff
             int_ip = struct.pack('!L', color_32bits)
@@ -181,6 +182,6 @@ class Main(KytosNApp):
 
     @staticmethod
     def get_cookie(dpid):
-        """Get cookie integer"""
-        return (int(dpid.replace(":", ""), 16)) + \
-               (settings.COOKIE_PREFIX << 56)
+        """Get 8-byte integer cookie."""
+        int_dpid = int(dpid.replace(":", ""), 16)
+        return (0x00FFFFFFFFFFFFFF & int_dpid) | (settings.COOKIE_PREFIX << 56)

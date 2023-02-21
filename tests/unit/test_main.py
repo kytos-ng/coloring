@@ -218,3 +218,10 @@ class TestMain(TestCase):
         json_response = json.loads(response.data)
 
         self.assertEqual(json_response['colors'], {})
+
+    def test_get_cookie(self) -> None:
+        """test get_cookie."""
+        dpid = "cc4e244b11000000"
+        assert Main.get_cookie(dpid) == 0xac4e244b11000000
+        dpid = "0000000000000001"
+        assert Main.get_cookie(dpid) == 0xac00000000000001
