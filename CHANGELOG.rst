@@ -10,6 +10,23 @@ General Information
 ===================
 - ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
 
+[2022.3.1] - 2023-02-17
+***********************
+
+Fixed
+=====
+- ``get_cookie`` could overflow 8 bytes for certain dpid values
+- Made sure that the generated matched ``dl_src`` is a local unicast address
+
+General Information
+===================
+
+If you have been running this NApp version 2022.3.0 or prior in production it's recommended that you delete the previous flows before you start ``kytosd`` again since it this new version can end up pushing flows might not completely overwrite the old ones depending on dpids values:
+
+.. code:: bash
+
+  $ curl -X DELETE http://127.0.0.1:8181/api/kytos/flow_manager/v2/flows/ -H 'Content-type: application/json' -d '{ "flows": [ { "cookie": 12393906174523604992, "cookie_mask": 18374686479671623680 } ] }'
+
 [2022.3.0] - 2022-12-15
 ***********************
 

@@ -211,3 +211,10 @@ class TestMain:
         response = await self.api_client.get(endpoint)
         assert response.status_code == 200
         assert response.json()['colors'] == {}
+
+    def test_get_cookie(self) -> None:
+        """test get_cookie."""
+        dpid = "cc4e244b11000000"
+        assert Main.get_cookie(dpid) == 0xac4e244b11000000
+        dpid = "0000000000000001"
+        assert Main.get_cookie(dpid) == 0xac00000000000001
