@@ -1,11 +1,33 @@
 """Test the Main class."""
 import json
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
+from kytos.lib.helpers import get_controller_mock, get_test_client
 
-from kytos.lib.helpers import get_test_client, get_controller_mock
+from kytos.core.events import KytosEvent
 from napps.amlight.coloring.main import Main
+
+
+async def test_on_table_enabled():
+    """Test on_table_enabled"""
+    # Succesfully setting table groups
+    controller = get_controller_mock()
+    controller.buffers.app.aput = AsyncMock()
+    napp = Main(controller)
+    content = {"coloring": {"base": 123}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert napp.table_group == content["coloring"]
+    assert controller.buffers.app.aput.call_count == 1
+
+    # Failure at setting table groups
+    content = {"coloring": {"unknown": 123}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert controller.buffers.app.aput.call_count == 1
 
 
 class TestMain(TestCase):
@@ -225,3 +247,12 @@ class TestMain(TestCase):
         assert Main.get_cookie(dpid) == 0xac4e244b11000000
         dpid = "0000000000000001"
         assert Main.get_cookie(dpid) == 0xac00000000000001
+
+    def test_set_flow_table_group_owner(self):
+        """Test set_flow_table_group_owner"""
+        self.napp.table_group = {"base": 2}
+        flow = {}
+        self.napp.set_flow_table_group_owner(flow, "base")
+        assert "table_group" in flow
+        assert "owner" in flow
+        assert flow["table_id"] == 2
