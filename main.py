@@ -14,7 +14,7 @@ import requests
 from flask import jsonify
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
-from kytos.core.helpers import listen_to
+from kytos.core.helpers import listen_to, alisten_to
 from napps.amlight.coloring import settings
 from napps.amlight.coloring.utils import make_unicast_local_mac
 from pyof.v0x04.common.port import PortNo
@@ -38,7 +38,7 @@ class Main(KytosNApp):
         self._switches_lock = Lock()
         self._flow_manager_url = settings.FLOW_MANAGER_URL
         self._color_field = settings.COLOR_FIELD
-        self.table_id = 0
+        self.table_group = {"base": 0}
 
     def execute(self):
         """ Topology updates are executed through events. """
@@ -88,7 +88,7 @@ class Main(KytosNApp):
                 for neighbor in switch_dict['neighbors']:
                     if neighbor not in switch_dict['flows']:
                         flow_dict = {
-                            'table_id': self.table_id,
+                            'table_id': 0,
                             'match': {},
                             'priority': 50000,
                             'actions': [
@@ -102,6 +102,7 @@ class Main(KytosNApp):
                                 self.switches[neighbor]['color'],
                                 self._color_field
                             )
+                        self.set_flow_table_group_owner(flow_dict, "base")
 
                         switch_dict['flows'][neighbor] = flow_dict
                         dpid_flows[dpid].append(flow_dict)
@@ -188,24 +189,30 @@ class Main(KytosNApp):
         int_dpid = int(dpid.replace(":", ""), 16)
         return (0x00FFFFFFFFFFFFFF & int_dpid) | (settings.COOKIE_PREFIX << 56)
 
-    @listen_to("kytos/of_multi_table.enable_table")
-    def on_table_enabled(self, event):
-        """Listen for the table settings"""
-        self.handle_table_enabled(event)
-        
-    def handle_table_enabled(self, event):
+    def set_flow_table_group_owner(self, flow: dict, group: str) -> dict:
+        """Set owner, table_group and table_id
+        coloring is only allowing 'base' for now"""
+        flow["owner"] = "coloring"
+        flow["table_group"] = group
+
+        # If "base" in table_group, every flow is in one table
+        if "base" in self.table_group:
+            flow["table_id"] = self.table_group["base"]
+            return flow
+        flow["table_id"] = self.table_group.get(group, 0)
+        return flow
+
+    # pylint: disable=attribute-defined-outside-init
+    @alisten_to("kytos/of_multi_table.enable_table")
+    async def on_table_enabled(self, event):
         """Handle a recently table enabled.
         Coloring only allows "base" as flow classification
         """
         table_group = event.content.get("coloring", None)
-        if table_group:
-            self.table_id = table_group["base"]
-            content = {"group_table": {"base": self.table_id}}
-            self.emit_event("enable_table", content)
-
-    def emit_event(self, name, content=None):
-        """Send event"""
-        context = "kytos/coloring"
-        event_name = f"{context}.{name}"
-        event = KytosEvent(name=event_name, content=content)
-        self.controller.buffers.app.put(event)
+        if not table_group:
+            return
+        self.table_group = table_group
+        content = {"group_table": self.table_group}
+        event_out = KytosEvent(name="kytos/coloring.enable_table",
+                               content=content)
+        await self.controller.buffers.app.aput(event_out)
