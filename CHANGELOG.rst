@@ -9,6 +9,14 @@ All notable changes to the coloring NApp will be documented in this file.
 [2022.3.1] - 2023-02-17
 ***********************
 
+Changed
+=======
+- ``of_coloring`` now supports table group settings from ``of_multi_table``
+
+Added
+=====
+- Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/coloring.enable_table`` required to set a different ``table_id`` to flows.
+
 Fixed
 =====
 - ``get_cookie`` could overflow 8 bytes for certain dpid values

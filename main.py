@@ -208,7 +208,7 @@ class Main(KytosNApp):
     @alisten_to("kytos/of_multi_table.enable_table")
     async def on_table_enabled(self, event):
         """Handle a recently table enabled.
-        Coloring only allows "base" as flow classification
+        Coloring only allows "base" as flow group
         """
         table_group = event.content.get("coloring", None)
         if not table_group:
