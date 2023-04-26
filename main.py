@@ -189,17 +189,19 @@ class Main(KytosNApp):
         int_dpid = int(dpid.replace(":", ""), 16)
         return (0x00FFFFFFFFFFFFFF & int_dpid) | (settings.COOKIE_PREFIX << 56)
 
-    def set_flow_table_group_owner(self, flow: dict, group: str) -> dict:
+    def set_flow_table_group_owner(self,
+                                   flow: dict,
+                                   group: str = "base") -> dict:
         """Set owner, table_group and table_id
         coloring is only allowing 'base' for now"""
+        try:
+            flow["table_id"] = self.table_group[group]
+        except KeyError as err:
+            log.error(f'The table group "{group}" has not been found'
+                      f'Table group in settings: {self.table_group}')
+            raise err
         flow["owner"] = "coloring"
         flow["table_group"] = group
-
-        # If "base" in table_group, every flow is in one table
-        if "base" in self.table_group:
-            flow["table_id"] = self.table_group["base"]
-            return flow
-        flow["table_id"] = self.table_group.get(group, 0)
         return flow
 
     # pylint: disable=attribute-defined-outside-init
@@ -211,6 +213,12 @@ class Main(KytosNApp):
         table_group = event.content.get("coloring", None)
         if not table_group:
             return
+        for group in table_group:
+            if group not in settings.TABLE_GROUP_ALLOWED:
+                log.error(f'The table group "{group}" is not allowed for '
+                          f'coloring. Allowed table groups are '
+                          f'{settings.TABLE_GROUP_ALLOWED}')
+                return
         self.table_group = table_group
         content = {"group_table": self.table_group}
         event_out = KytosEvent(name="kytos/coloring.enable_table",

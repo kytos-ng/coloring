@@ -43,6 +43,21 @@ Subscribed
 ----------
 
 - ``kytos/topology.updated``
+- ``kytos/of_multi_table.enable_table``
+
+Published
+---------
+
+kytos/coloring.enable_table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A response from the ``kytos/of_multi_table.enable_table`` event to confirm table settings.
+
+.. code-block:: python3
+
+  {
+    'table_group': <object>
+  }
 
 .. TAGs
 
