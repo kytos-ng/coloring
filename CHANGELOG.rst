@@ -16,6 +16,7 @@ Changed
 Added
 =====
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/coloring.enable_table`` required to set a different ``table_id`` to flows.
+- Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now there is only ``'base'``.
 
 Fixed
 =====
