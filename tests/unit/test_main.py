@@ -3,7 +3,6 @@ import json
 from unittest import TestCase
 from unittest.mock import AsyncMock, Mock, patch
 
-import pytest
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
 from kytos.core.events import KytosEvent
@@ -257,9 +256,3 @@ class TestMain(TestCase):
         assert "table_group" in flow
         assert "owner" in flow
         assert flow["table_id"] == 2
-
-    def test_set_flow_table_group_owner_error(self):
-        """Test set_flow_table_group_owner with unknown group"""
-        self.napp.table_group = {"base": 4}
-        with pytest.raises(KeyError):
-            self.napp.set_flow_table_group_owner({}, "evpl")

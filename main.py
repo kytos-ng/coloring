@@ -102,7 +102,7 @@ class Main(KytosNApp):
                                 self.switches[neighbor]['color'],
                                 self._color_field
                             )
-                        self.set_flow_table_group_owner(flow_dict, "base")
+                        self.set_flow_table_group_owner(flow_dict)
 
                         switch_dict['flows'][neighbor] = flow_dict
                         dpid_flows[dpid].append(flow_dict)
@@ -194,12 +194,7 @@ class Main(KytosNApp):
                                    group: str = "base") -> dict:
         """Set owner, table_group and table_id
         coloring is only allowing 'base' for now"""
-        try:
-            flow["table_id"] = self.table_group[group]
-        except KeyError as err:
-            log.error(f'The table group "{group}" has not been found'
-                      f'Table group in settings: {self.table_group}')
-            raise err
+        flow["table_id"] = self.table_group[group]
         flow["owner"] = "coloring"
         flow["table_group"] = group
         return flow
