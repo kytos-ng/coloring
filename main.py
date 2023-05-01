@@ -12,8 +12,9 @@ from collections import defaultdict
 
 import requests
 from kytos.core import KytosNApp, log, rest
-from kytos.core.helpers import listen_to
+from kytos.core.helpers import listen_to, alisten_to
 from kytos.core.rest_api import JSONResponse, Request
+from kytos.core.events import KytosEvent
 from napps.amlight.coloring import settings
 from napps.amlight.coloring.utils import make_unicast_local_mac
 from pyof.v0x04.common.port import PortNo
@@ -37,6 +38,7 @@ class Main(KytosNApp):
         self._switches_lock = Lock()
         self._flow_manager_url = settings.FLOW_MANAGER_URL
         self._color_field = settings.COLOR_FIELD
+        self.table_group = {"base": 0}
 
     def execute(self):
         """ Topology updates are executed through events. """
@@ -100,6 +102,7 @@ class Main(KytosNApp):
                                 self.switches[neighbor]['color'],
                                 self._color_field
                             )
+                        self.set_flow_table_group_owner(flow_dict)
 
                         switch_dict['flows'][neighbor] = flow_dict
                         dpid_flows[dpid].append(flow_dict)
@@ -185,3 +188,34 @@ class Main(KytosNApp):
         """Get 8-byte integer cookie."""
         int_dpid = int(dpid.replace(":", ""), 16)
         return (0x00FFFFFFFFFFFFFF & int_dpid) | (settings.COOKIE_PREFIX << 56)
+
+    def set_flow_table_group_owner(self,
+                                   flow: dict,
+                                   group: str = "base") -> dict:
+        """Set owner, table_group and table_id
+        coloring is only allowing 'base' for now"""
+        flow["table_id"] = self.table_group[group]
+        flow["owner"] = "coloring"
+        flow["table_group"] = group
+        return flow
+
+    # pylint: disable=attribute-defined-outside-init
+    @alisten_to("kytos/of_multi_table.enable_table")
+    async def on_table_enabled(self, event):
+        """Handle a recently table enabled.
+        Coloring only allows "base" as flow group
+        """
+        table_group = event.content.get("coloring", None)
+        if not table_group:
+            return
+        for group in table_group:
+            if group not in settings.TABLE_GROUP_ALLOWED:
+                log.error(f'The table group "{group}" is not allowed for '
+                          f'coloring. Allowed table groups are '
+                          f'{settings.TABLE_GROUP_ALLOWED}')
+                return
+        self.table_group = table_group
+        content = {"group_table": self.table_group}
+        event_out = KytosEvent(name="kytos/coloring.enable_table",
+                               content=content)
+        await self.controller.buffers.app.aput(event_out)
