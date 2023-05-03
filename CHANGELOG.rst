@@ -6,6 +6,10 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+General Information
+===================
+- ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
+
 [2022.3.1] - 2023-02-17
 ***********************
 

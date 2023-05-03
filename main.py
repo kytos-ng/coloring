@@ -11,10 +11,10 @@ from threading import Lock
 from collections import defaultdict
 
 import requests
-from flask import jsonify
 from kytos.core import KytosNApp, log, rest
-from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to, alisten_to
+from kytos.core.rest_api import JSONResponse, Request
+from kytos.core.events import KytosEvent
 from napps.amlight.coloring import settings
 from napps.amlight.coloring.utils import make_unicast_local_mac
 from pyof.v0x04.common.port import PortNo
@@ -165,13 +165,13 @@ class Main(KytosNApp):
                           f'on dpid {dpid}')
 
     @rest('colors')
-    def rest_colors(self):
+    def rest_colors(self, _request: Request) -> JSONResponse:
         """ List of switch colors."""
-        return jsonify({'colors': self._switch_colors()})
+        return JSONResponse({'colors': self._switch_colors()})
 
     @staticmethod
     @rest('/settings', methods=['GET'])
-    def return_settings():
+    def return_settings(_request: Request) -> JSONResponse:
         """ List the SDNTrace settings
             Return:
             SETTINGS in JSON format
@@ -181,7 +181,7 @@ class Main(KytosNApp):
         settings_dict['coloring_interval'] = settings.COLORING_INTERVAL
         settings_dict['topology_url'] = settings.TOPOLOGY_URL
         settings_dict['flow_manager_url'] = settings.FLOW_MANAGER_URL
-        return jsonify(settings_dict)
+        return JSONResponse(settings_dict)
 
     @staticmethod
     def get_cookie(dpid):

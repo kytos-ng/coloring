@@ -1,6 +1,4 @@
 """Test the Main class."""
-import json
-from unittest import TestCase
 from unittest.mock import AsyncMock, Mock, patch
 
 from kytos.lib.helpers import get_controller_mock, get_test_client
@@ -30,32 +28,35 @@ async def test_on_table_enabled():
     assert controller.buffers.app.aput.call_count == 1
 
 
-class TestMain(TestCase):
+class TestMain:
     """Test the Main class."""
 
-    def setUp(self):
-        self.server_name_url = 'http://localhost:8181/api/amlight/coloring'
-        self.napp = Main(get_controller_mock())
+    def setup_method(self):
+        """Setup method."""
+        controller = get_controller_mock()
+        self.napp = Main(controller)
+        self.api_client = get_test_client(controller, self.napp)
+        self.base_endpoint = "amlight/coloring"
 
     def test_color_to_field_dl(self):
         """Test method color_to_field.
         Fields dl_src and dl_dst."""
 
         color = self.napp.color_to_field(300, 'dl_src')
-        self.assertEqual(color, 'ee:ee:ee:ee:01:2c')
+        assert color == 'ee:ee:ee:ee:01:2c'
 
         color = self.napp.color_to_field(300, 'dl_dst')
-        self.assertEqual(color, 'ee:ee:ee:ee:01:2c')
+        assert color == 'ee:ee:ee:ee:01:2c'
 
     def test_color_to_field_nw(self):
         """Test method color_to_field.
         Fields nw_src and nw_dst."""
 
         color = self.napp.color_to_field(300, 'nw_src')
-        self.assertEqual(color, '0.0.1.44')
+        assert color == '0.0.1.44'
 
         color = self.napp.color_to_field(300, 'nw_dst')
-        self.assertEqual(color, '0.0.1.44')
+        assert color == '0.0.1.44'
 
     def test_color_to_field_others(self):
         """Test method color_to_field.
@@ -63,16 +64,16 @@ class TestMain(TestCase):
         initial_color = 300
         expected_color = initial_color & 0xffff
         color = self.napp.color_to_field(initial_color, 'in_port')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
         color = self.napp.color_to_field(initial_color, 'dl_vlan')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
         color = self.napp.color_to_field(initial_color, 'tp_src')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
         color = self.napp.color_to_field(initial_color, 'tp_dst')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
     def test_color_to_field_nw_tos(self):
         """Test method color_to_field.
@@ -80,30 +81,30 @@ class TestMain(TestCase):
         initial_color = 300
         expected_color = initial_color & 0xff
         color = self.napp.color_to_field(initial_color, 'nw_tos')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
         color = self.napp.color_to_field(initial_color, 'nw_proto')
-        self.assertEqual(color, expected_color)
+        assert color == expected_color
 
     def test_color_to_field_fail(self):
         """Test method color_to_field with invalid field name."""
         initial_color = 300
         color = self.napp.color_to_field(300, 'does_not_exit')
-        self.assertEqual(color, initial_color & 0xff)
+        assert color == initial_color & 0xff
 
-    def test_rest_settings(self):
+    async def test_rest_settings(self):
         """Test method return_settings."""
-        api = get_test_client(self.napp.controller, self.napp)
-        url = f'{self.server_name_url}/settings/'
-        response = api.get(url)
-        json_response = json.loads(response.data)
+        endpoint = f"{self.base_endpoint}/settings/"
+        response = await self.api_client.get(endpoint)
+        assert response.status_code == 200
+        json_response = response.json()
 
-        self.assertEqual(json_response['color_field'], "dl_src")
-        self.assertEqual(json_response['coloring_interval'], 10)
-        self.assertTrue("/api/kytos/flow_manager/v2/flows/" in
-                        json_response['flow_manager_url'])
-        self.assertTrue(json_response['topology_url']
-                        .endswith("/api/kytos/topology/v3/links"))
+        assert json_response['color_field'] == "dl_src"
+        assert json_response['coloring_interval'] == 10
+        flow_manager_url = "/api/kytos/flow_manager/v2/flows/"
+        assert flow_manager_url in json_response['flow_manager_url']
+        topology_url = json_response['topology_url']
+        assert topology_url.endswith("/api/kytos/topology/v3/links")
 
     @patch('requests.post')
     def test_update_colors(self, req_post_mock):
@@ -137,33 +138,28 @@ class TestMain(TestCase):
             }
         ]
 
-        self.assertEqual(self.napp.switches, {})
+        assert not self.napp.switches
         self.napp.update_colors(links)
 
         # Verify installed flows with colors
-        self.assertTrue(len(self.napp.switches) == 2)
-        self.assertEqual(
-            self.napp.switches['00:00:00:00:00:00:00:01']['color'], 1)
-        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:01']
-                         ['flows']['00:00:00:00:00:00:00:02']['match']
-                         ['dl_src']),
-                         'ee:ee:ee:ee:ee:02')
-        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:01']
-                         ['flows']['00:00:00:00:00:00:00:02']['cookie']),
-                         self.napp.get_cookie(switch1.dpid))
+        assert len(self.napp.switches) == 2
+        dpid1 = '00:00:00:00:00:00:00:01'
+        dpid2 = '00:00:00:00:00:00:00:02'
+        sw1 = self.napp.switches[dpid1]
+        sw2 = self.napp.switches[dpid2]
 
-        self.assertEqual(
-            self.napp.switches['00:00:00:00:00:00:00:02']['color'], 2)
-        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:02']
-                         ['flows']['00:00:00:00:00:00:00:01']['match']
-                         ['dl_src']),
-                         'ee:ee:ee:ee:ee:01')
-        self.assertEqual((self.napp.switches['00:00:00:00:00:00:00:02']
-                         ['flows']['00:00:00:00:00:00:00:01']['cookie']),
-                         self.napp.get_cookie(switch2.dpid))
+        assert sw1['color'] == 1
+        assert sw1['flows'][dpid2]['match']['dl_src'] == 'ee:ee:ee:ee:ee:02'
+        cookie = self.napp.get_cookie(switch1.dpid)
+        assert sw1['flows'][dpid2]['cookie'] == cookie
+
+        assert sw2['color'] == 2
+        assert sw2['flows'][dpid1]['match']['dl_src'] == 'ee:ee:ee:ee:ee:01'
+        cookie = self.napp.get_cookie(switch2.dpid)
+        assert sw2['flows'][dpid1]['cookie'] == cookie
 
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
-        self.assertEqual(req_post_mock.call_count, 2)
+        assert req_post_mock.call_count == 2
 
         # Next test we verify that the napp will not search
         # switch data again, because it is already cached.
@@ -201,45 +197,42 @@ class TestMain(TestCase):
         self.napp.update_colors([])
 
         # Verify installed flows with colors
-        self.assertTrue(len(self.napp.switches) == 2)
+        assert len(self.napp.switches) == 2
 
-        self.assertEqual(
-            self.napp.switches['00:00:00:00:00:00:00:01']['color'], 1)
-        self.assertEqual((self.napp.switches
-                          ['00:00:00:00:00:00:00:01']['flows']), {})
-        self.assertEqual(
-            self.napp.switches['00:00:00:00:00:00:00:02']['color'], 2)
-        self.assertEqual((self.napp.switches
-                          ['00:00:00:00:00:00:00:02']['flows']), {})
+        dpid1 = '00:00:00:00:00:00:00:01'
+        dpid2 = '00:00:00:00:00:00:00:02'
+        sw1 = self.napp.switches[dpid1]
+        sw2 = self.napp.switches[dpid2]
 
-    def test_rest_colors(self):
+        assert sw1['color'] == 1
+        assert sw1['flows'] == {}
+        assert sw2['color'] == 2
+        assert sw2['flows'] == {}
+
+    async def test_rest_colors(self):
         """ Test rest call to /colors to retrieve all switches color. """
         switch1 = {'dpid': '00:00:00:00:00:00:00:01',
                    'ofp_version': '0x04',
                    'color': 300}
         self.napp.switches = {'1': switch1}
 
-        # Call rest /colors
-        api = get_test_client(self.napp.controller, self.napp)
-        url = f'{self.server_name_url}/colors'
-        response = api.get(url)
-        json_response = json.loads(response.data)
-        self.assertEqual(json_response['colors']['1']['color_field'],
-                         'dl_src')
-        self.assertEqual(json_response['colors']['1']['color_value'],
-                         'ee:ee:ee:ee:01:2c')
+        endpoint = f"{self.base_endpoint}/colors"
+        response = await self.api_client.get(endpoint)
+        assert response.status_code == 200
 
-    def test_rest_colors_without_switches(self):
+        json_response = response.json()
+        assert json_response['colors']['1']['color_field'] == 'dl_src'
+        color_value = json_response['colors']['1']['color_value']
+        assert color_value == 'ee:ee:ee:ee:01:2c'
+
+    async def test_rest_colors_without_switches(self):
         """ Test rest call to /colors without switches. """
         self.napp.switches = {}
 
-        # Call rest /colors
-        api = get_test_client(self.napp.controller, self.napp)
-        url = f'{self.server_name_url}/colors'
-        response = api.get(url)
-        json_response = json.loads(response.data)
-
-        self.assertEqual(json_response['colors'], {})
+        endpoint = f"{self.base_endpoint}/colors"
+        response = await self.api_client.get(endpoint)
+        assert response.status_code == 200
+        assert response.json()['colors'] == {}
 
     def test_get_cookie(self) -> None:
         """test get_cookie."""

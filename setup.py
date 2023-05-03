@@ -276,16 +276,6 @@ setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       license='MIT',
       install_requires=read_requirements() + ["setuptools >= 59.6.0"],
       packages=[],
-      extras_require={
-          'dev': [
-              'pytest==7.0.0',
-              'pytest==7.0.0',
-              'pytest-cov==3.0.0',
-              'pip-tools',
-              'yala',
-              'tox',
-          ],
-      },
       cmdclass={
           'clean': Cleaner,
           'coverage': TestCoverage,
