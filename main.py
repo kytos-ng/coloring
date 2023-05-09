@@ -88,7 +88,6 @@ class Main(KytosNApp):
                 for neighbor in switch_dict['neighbors']:
                     if neighbor not in switch_dict['flows']:
                         flow_dict = {
-                            'table_id': 0,
                             'match': {},
                             'priority': 50000,
                             'actions': [
@@ -214,7 +213,7 @@ class Main(KytosNApp):
                           f'coloring. Allowed table groups are '
                           f'{settings.TABLE_GROUP_ALLOWED}')
                 return
-        self.table_group = table_group
+        self.table_group.update(table_group)
         content = {"group_table": self.table_group}
         event_out = KytosEvent(name="kytos/coloring.enable_table",
                                content=content)
