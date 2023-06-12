@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
+from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from napps.amlight.coloring.main import Main
 
@@ -111,10 +112,12 @@ class TestMain:
         """Test method update_colors."""
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
+        switch1.status = EntityStatus.UP
         switch1.ofp_version = '0x04'
         switch2 = Mock()
         switch2.dpid = '00:00:00:00:00:00:00:02'
         switch2.ofp_version = '0x04'
+        switch2.status = EntityStatus.UP
 
         self.napp.controller.switches = {'1': switch1, '2': switch2}
 
