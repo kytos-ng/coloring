@@ -9,6 +9,7 @@ All notable changes to the coloring NApp will be documented in this file.
 Changed
 =======
 - ``of_coloring`` now supports table group settings from ``of_multi_table``
+- ``coloring`` now installs flows on the switches with ``UP`` status
 
 Added
 =====

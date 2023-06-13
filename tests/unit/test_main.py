@@ -112,12 +112,10 @@ class TestMain:
         """Test method update_colors."""
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
-        switch1.status = EntityStatus.UP
         switch1.ofp_version = '0x04'
         switch2 = Mock()
         switch2.dpid = '00:00:00:00:00:00:00:02'
         switch2.ofp_version = '0x04'
-        switch2.status = EntityStatus.UP
 
         self.napp.controller.switches = {'1': switch1, '2': switch2}
 
@@ -142,12 +140,26 @@ class TestMain:
         ]
 
         assert not self.napp.switches
+
+        # Verify no flows with switches DOWN
+        switch1.status = EntityStatus.DOWN
+        switch2.status = EntityStatus.DOWN
+
         self.napp.update_colors(links)
 
-        # Verify installed flows with colors
         assert len(self.napp.switches) == 2
         dpid1 = '00:00:00:00:00:00:00:01'
         dpid2 = '00:00:00:00:00:00:00:02'
+        sw1 = self.napp.switches[dpid1]
+        sw2 = self.napp.switches[dpid2]
+
+        assert sw1['flows'] == {}
+        assert sw2['flows'] == {}
+
+        # Verify installed flows with colors
+        switch1.status = EntityStatus.UP
+        switch2.status = EntityStatus.UP
+        self.napp.update_colors(links)
         sw1 = self.napp.switches[dpid1]
         sw2 = self.napp.switches[dpid2]
 
