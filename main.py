@@ -12,6 +12,7 @@ from collections import defaultdict
 
 import requests
 from kytos.core import KytosNApp, log, rest
+from kytos.core.common import EntityStatus
 from kytos.core.helpers import listen_to, alisten_to
 from kytos.core.rest_api import JSONResponse, Request
 from kytos.core.events import KytosEvent
@@ -84,6 +85,8 @@ class Main(KytosNApp):
                 if switch.ofp_version == '0x04':
                     controller_port = PortNo.OFPP_CONTROLLER
                 else:
+                    continue
+                if switch.status != EntityStatus.UP:
                     continue
                 for neighbor in switch_dict['neighbors']:
                     if neighbor not in switch_dict['flows']:
