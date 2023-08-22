@@ -33,7 +33,7 @@ To install this NApp, make sure to have the same venv activated as you have ``ky
 Requirements
 ============
 
-- `amlight/flow_stats <https://github.com/kytos-ng/flow_stats>`_
+- `kytos/topology <https://github.com/kytos-ng/topology>`_
 - `kytos/flow_manager <https://github.com/kytos-ng/flow_manager>`_
 
 Events
