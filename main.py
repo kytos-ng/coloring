@@ -44,6 +44,13 @@ class Main(KytosNApp):
     def execute(self):
         """ Topology updates are executed through events. """
 
+    @listen_to('kytos/topology.switch.deleted')
+    def on_switch_deleted(self, event):
+        """Remove switch from dictionary"""
+        with self._switches_lock:
+            switch = event.content['switch']
+            self.switches.pop(switch.dpid, None)
+
     @listen_to('kytos/topology.updated')
     def topology_updated(self, event):
         """Update colors on topology update."""
