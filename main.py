@@ -44,11 +44,41 @@ class Main(KytosNApp):
     def execute(self):
         """ Topology updates are executed through events. """
 
-    @listen_to('kytos/topology.switch.deleted')
+    @listen_to('kytos/topology.*.deleted')
     def on_switch_deleted(self, event):
-        """Remove switch from dictionary"""
+        """Remove link/switch from self.switches"""
+        if 'switch' in event.content:
+            self.handle_switch_deleted(event.content['switch'])
+        elif 'link' in event.content:
+            self.handle_link_deleted(event.content['link'])
+
+    def handle_link_deleted(self, link):
+        """Handle link deletion"""
+        switch_a_id = link.endpoint_a.switch.dpid
+        switch_b_id = link.endpoint_b.switch.dpid
+
+        if switch_b_id == switch_a_id:
+            return
         with self._switches_lock:
-            switch = event.content['switch']
+            flow_mods = defaultdict(list)
+            flow = self.switches[switch_a_id]['flows'][switch_b_id]
+            flow_mods[switch_a_id].append({
+                "table_id": flow['table_id'],
+                "match": flow['match']
+            })
+            flow = self.switches[switch_b_id]['flows'][switch_a_id]
+            flow_mods[switch_b_id].append({
+                "table_id": flow['table_id'],
+                "match": flow['match']
+            })
+            self.switches[switch_a_id]['flows'].pop(switch_b_id)
+            self.switches[switch_b_id]['flows'].pop(switch_a_id)
+
+        self._remove_flow_mods(flow_mods)
+
+    def handle_switch_deleted(self, switch):
+        """Handle switch deletion"""
+        with self._switches_lock:
             self.switches.pop(switch.dpid, None)
 
     @listen_to('kytos/topology.updated')
@@ -172,6 +202,19 @@ class Main(KytosNApp):
                 log.error(f'Flow manager returned an error inserting '
                           f'flows {flows}. Status code {res.status_code} '
                           f'on dpid {dpid}')
+
+    def _remove_flow_mods(self, flows: dict, force: bool= True) -> None:
+        """Remove FlowMods"""
+        switches = flows.keys()
+        for dpid in switches:
+            name = "kytos.flow_manager.flows.delete"
+            content = {
+                'dpid': dpid,
+                'flow_dict': {'flows': flows[dpid]},
+                'force': force,
+            }
+            event = KytosEvent(name=name, content=content)
+            self.controller.buffers.app.put(event)
 
     @rest('colors')
     def rest_colors(self, _request: Request) -> JSONResponse:
