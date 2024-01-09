@@ -44,42 +44,15 @@ class Main(KytosNApp):
     def execute(self):
         """ Topology updates are executed through events. """
 
-    @listen_to('kytos/topology.*.deleted')
-    def on_switch_deleted(self, event):
-        """Remove link/switch from self.switches"""
-        if 'switch' in event.content:
-            self.handle_switch_deleted(event.content['switch'])
-        elif 'link' in event.content:
-            self.handle_link_deleted(event.content['link'])
+    @listen_to('kytos/topology.switch.disabled')
+    def on_switch_disabled(self, event):
+        """Remove switch from self.switches"""
+        self.handle_switch_deleted(event.content['dpid'])
 
-    def handle_link_deleted(self, link):
-        """Handle link deletion"""
-        switch_a_id = link.endpoint_a.switch.dpid
-        switch_b_id = link.endpoint_b.switch.dpid
-
-        if switch_b_id == switch_a_id:
-            return
-        with self._switches_lock:
-            flow_mods = defaultdict(list)
-            flow = self.switches[switch_a_id]['flows'][switch_b_id]
-            flow_mods[switch_a_id].append({
-                "table_id": flow['table_id'],
-                "match": flow['match']
-            })
-            flow = self.switches[switch_b_id]['flows'][switch_a_id]
-            flow_mods[switch_b_id].append({
-                "table_id": flow['table_id'],
-                "match": flow['match']
-            })
-            self.switches[switch_a_id]['flows'].pop(switch_b_id)
-            self.switches[switch_b_id]['flows'].pop(switch_a_id)
-
-        self._remove_flow_mods(flow_mods)
-
-    def handle_switch_deleted(self, switch):
-        """Handle switch deletion"""
-        with self._switches_lock:
-            self.switches.pop(switch.dpid, None)
+    @listen_to('kytos/topology.link.disabled')
+    def on_link_disabled(self, event):
+        """Remove link from self.switches neighbors"""
+        self.handle_link_deleted(event.content['link'])
 
     @listen_to('kytos/topology.updated')
     def topology_updated(self, event):
@@ -97,6 +70,8 @@ class Main(KytosNApp):
         """
         with self._switches_lock:
             for switch in self.controller.switches.copy().values():
+                if not switch.is_enabled():
+                    continue
                 if switch.dpid not in self.switches:
                     color = int(switch.dpid.replace(':', '')[4:], 16)
                     self.switches[switch.dpid] = {'color': color,
@@ -106,6 +81,8 @@ class Main(KytosNApp):
                     self.switches[switch.dpid]['neighbors'] = set()
 
             for link in links:
+                if link.get('enabled') is not True:
+                    continue
                 source = link['endpoint_a']['switch']
                 target = link['endpoint_b']['switch']
                 if source != target:
@@ -119,11 +96,11 @@ class Main(KytosNApp):
         with self._switches_lock:
             for dpid, switch_dict in self.switches.items():
                 switch = self.controller.get_switch_by_dpid(dpid)
+                if switch.status != EntityStatus.UP:
+                    continue
                 if switch.ofp_version == '0x04':
                     controller_port = PortNo.OFPP_CONTROLLER
                 else:
-                    continue
-                if switch.status != EntityStatus.UP:
                     continue
                 for neighbor in switch_dict['neighbors']:
                     if neighbor not in switch_dict['flows']:
@@ -147,6 +124,33 @@ class Main(KytosNApp):
                         dpid_flows[dpid].append(flow_dict)
 
         self._send_flow_mods(dpid_flows)
+
+    def handle_link_deleted(self, link):
+        """Handle link deletion"""
+        switch_a_id = link.endpoint_a.switch.dpid
+        switch_b_id = link.endpoint_b.switch.dpid
+
+        if switch_b_id == switch_a_id:
+            return
+        flow_mods = defaultdict(list)
+        flow = self.switches[switch_a_id]['flows'][switch_b_id]
+        flow_mods[switch_a_id].append({
+            "table_id": flow['table_id'],
+            "match": flow['match']
+        })
+        flow = self.switches[switch_b_id]['flows'][switch_a_id]
+        flow_mods[switch_b_id].append({
+            "table_id": flow['table_id'],
+            "match": flow['match']
+        })
+        self.switches[switch_a_id]['flows'].pop(switch_b_id)
+        self.switches[switch_b_id]['flows'].pop(switch_a_id)
+        self._remove_flow_mods(flow_mods)
+
+    def handle_switch_deleted(self, dpid):
+        """Handle switch deletion"""
+        with self._switches_lock:
+            self.switches.pop(dpid, None)
 
     def shutdown(self):
         """This method is executed when your napp is unloaded.
@@ -203,7 +207,7 @@ class Main(KytosNApp):
                           f'flows {flows}. Status code {res.status_code} '
                           f'on dpid {dpid}')
 
-    def _remove_flow_mods(self, flows: dict, force: bool= True) -> None:
+    def _remove_flow_mods(self, flows: dict, force: bool = True) -> None:
         """Remove FlowMods"""
         switches = flows.keys()
         for dpid in switches:
