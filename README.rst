@@ -44,6 +44,8 @@ Subscribed
 
 - ``kytos/topology.updated``
 - ``kytos/of_multi_table.enable_table``
+- ``kytos/topology.switch.disabled``
+- ``kytos/topology.link.disabled``
 
 Published
 ---------

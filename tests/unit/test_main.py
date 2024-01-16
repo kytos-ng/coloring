@@ -113,9 +113,11 @@ class TestMain:
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
         switch1.ofp_version = '0x04'
+        switch1.is_enabled = lambda: True
         switch2 = Mock()
         switch2.dpid = '00:00:00:00:00:00:00:02'
         switch2.ofp_version = '0x04'
+        switch2.is_enabled = lambda: True
 
         self.napp.controller.switches = {'1': switch1, '2': switch2}
 
@@ -131,11 +133,13 @@ class TestMain:
         links = [
             {
                 'endpoint_a': {'switch': switch1.dpid},
-                'endpoint_b': {'switch': switch2.dpid}
+                'endpoint_b': {'switch': switch2.dpid},
+                'enabled': True
             },
             {
                 'endpoint_a': {'switch': switch1.dpid},
-                'endpoint_b': {'switch': switch1.dpid}
+                'endpoint_b': {'switch': switch1.dpid},
+                'enabled': True
             }
         ]
 
@@ -264,3 +268,65 @@ class TestMain:
         assert "table_group" in flow
         assert "owner" in flow
         assert flow["table_id"] == 2
+
+    def test_handle_switch_disabled(self):
+        """Test handle_switch_disabled"""
+        dpid = '00:00:00:00:00:00:00:01'
+        self.napp.switches = {'00:00:00:00:00:00:00:01': {
+            'color': 1,
+            'neighbords': set(),
+            'flows': {}
+        }}
+        self.napp.handle_switch_disabled(dpid)
+        assert not self.napp.switches
+
+    @patch('napps.amlight.coloring.main.Main._remove_flow_mods')
+    def test_handle_link_disabled(self, mock_remove):
+        """Test handle_link_disabled"""
+        self.napp.switches = {
+            '00:00:00:00:00:00:00:01': {
+                'color': 1,
+                'neighbords': {'00:00:00:00:00:00:00:02'},
+                'flows': {
+                    '00:00:00:00:00:00:00:02':{
+                        'match': {'dl_src': 'ee:ee:ee:ee:ee:01'},
+                        'table_id': 0
+                    }
+                }
+            },
+            '00:00:00:00:00:00:00:02': {
+                'color': 2,
+                'neighbords': {'00:00:00:00:00:00:00:01'},
+                'flows': {
+                    '00:00:00:00:00:00:00:01':{
+                        'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
+                        'table_id': 0
+                    }
+                }
+            }
+        }
+        link = Mock()
+        link.endpoint_a.switch.dpid = '00:00:00:00:00:00:00:01'
+        link.endpoint_b.switch.dpid = '00:00:00:00:00:00:00:02'
+        self.napp.handle_link_disabled(link)
+        assert not self.napp.switches['00:00:00:00:00:00:00:01']['flows']
+        assert not self.napp.switches['00:00:00:00:00:00:00:02']['flows']
+        assert mock_remove.call_count == 1
+
+        link.endpoint_b.switch.dpid = '00:00:00:00:00:00:00:01'
+        self.napp.handle_link_disabled(link)
+        assert mock_remove.call_count == 1
+
+    def test_remove_flow_mods(self):
+        """Test _remove_flow_mods"""
+        flows = {
+            "00:01": [{
+                'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
+                'table_id': 0
+            }]
+        }
+        self.napp._remove_flow_mods(flows)
+        args = self.napp.controller.buffers.app.put.call_args[0][0]
+        assert args.name == "kytos.flow_manager.flows.delete"
+        assert args.content['flow_dict']['flows'] == flows['00:01']
+        assert self.napp.controller.buffers.app.put.call_count == 1

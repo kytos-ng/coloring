@@ -47,12 +47,12 @@ class Main(KytosNApp):
     @listen_to('kytos/topology.switch.disabled')
     def on_switch_disabled(self, event):
         """Remove switch from self.switches"""
-        self.handle_switch_deleted(event.content['dpid'])
+        self.handle_switch_disabled(event.content['dpid'])
 
     @listen_to('kytos/topology.link.disabled')
     def on_link_disabled(self, event):
         """Remove link from self.switches neighbors"""
-        self.handle_link_deleted(event.content['link'])
+        self.handle_link_disabled(event.content['link'])
 
     @listen_to('kytos/topology.updated')
     def topology_updated(self, event):
@@ -62,6 +62,7 @@ class Main(KytosNApp):
             [link.as_dict() for link in topology.links.values()]
         )
 
+    # pylint: disable=too-many-branches
     def update_colors(self, links):
         """ Color each switch, with the color based on the switch's DPID.
             After that, if not yet installed, installs, for each switch, flows
@@ -125,30 +126,35 @@ class Main(KytosNApp):
 
         self._send_flow_mods(dpid_flows)
 
-    def handle_link_deleted(self, link):
-        """Handle link deletion"""
+    def handle_link_disabled(self, link):
+        """Handle link deletion. Deletes only flows from the proper switches.
+         The field 'neighbors' is managed by update_colors method."""
         switch_a_id = link.endpoint_a.switch.dpid
         switch_b_id = link.endpoint_b.switch.dpid
 
         if switch_b_id == switch_a_id:
             return
-        flow_mods = defaultdict(list)
-        flow = self.switches[switch_a_id]['flows'][switch_b_id]
-        flow_mods[switch_a_id].append({
-            "table_id": flow['table_id'],
-            "match": flow['match']
-        })
-        flow = self.switches[switch_b_id]['flows'][switch_a_id]
-        flow_mods[switch_b_id].append({
-            "table_id": flow['table_id'],
-            "match": flow['match']
-        })
-        self.switches[switch_a_id]['flows'].pop(switch_b_id)
-        self.switches[switch_b_id]['flows'].pop(switch_a_id)
+        
+        with self._switches_lock:
+            flow_mods = defaultdict(list)
+            flow = self.switches[switch_a_id]['flows'][switch_b_id]
+            flow_mods[switch_a_id].append({
+                "table_id": flow['table_id'],
+                "match": flow['match']
+            })
+            flow = self.switches[switch_b_id]['flows'][switch_a_id]
+            flow_mods[switch_b_id].append({
+                "table_id": flow['table_id'],
+                "match": flow['match']
+            })
+            self.switches[switch_a_id]['flows'].pop(switch_b_id)
+            self.switches[switch_b_id]['flows'].pop(switch_a_id)
         self._remove_flow_mods(flow_mods)
 
-    def handle_switch_deleted(self, dpid):
-        """Handle switch deletion"""
+    def handle_switch_disabled(self, dpid):
+        """Handle switch deletion. Links are expected to be disabled first
+         therefore the deleted inner dictionary is expected to be empty with
+          no flows and neighbors."""
         with self._switches_lock:
             self.switches.pop(dpid, None)
 
@@ -209,12 +215,11 @@ class Main(KytosNApp):
 
     def _remove_flow_mods(self, flows: dict, force: bool = True) -> None:
         """Remove FlowMods"""
-        switches = flows.keys()
-        for dpid in switches:
+        for dpid, mod_flows in flows.items():
             name = "kytos.flow_manager.flows.delete"
             content = {
                 'dpid': dpid,
-                'flow_dict': {'flows': flows[dpid]},
+                'flow_dict': {'flows': mod_flows},
                 'force': force,
             }
             event = KytosEvent(name=name, content=content)
