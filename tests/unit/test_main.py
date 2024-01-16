@@ -269,16 +269,28 @@ class TestMain:
         assert "owner" in flow
         assert flow["table_id"] == 2
 
-    def test_handle_switch_disabled(self):
+    @patch('napps.amlight.coloring.main.log')
+    def test_handle_switch_disabled(self, mock_log):
         """Test handle_switch_disabled"""
         dpid = '00:00:00:00:00:00:00:01'
         self.napp.switches = {'00:00:00:00:00:00:00:01': {
             'color': 1,
-            'neighbords': set(),
+            'neighbors': set(),
             'flows': {}
         }}
         self.napp.handle_switch_disabled(dpid)
         assert not self.napp.switches
+
+        self.napp.switches = {'00:00:00:00:00:00:00:01': {
+            'color': 1,
+            'neighbors': {'00:00:00:00:00:00:00:02'},
+            'flows': {}
+        }}
+        self.napp.handle_switch_disabled(dpid)
+        assert mock_log.error.call_count == 1
+
+        self.napp.handle_switch_disabled("mock_switch")
+        assert mock_log.error.call_count == 2
 
     @patch('napps.amlight.coloring.main.Main._remove_flow_mods')
     def test_handle_link_disabled(self, mock_remove):
@@ -288,7 +300,7 @@ class TestMain:
                 'color': 1,
                 'neighbords': {'00:00:00:00:00:00:00:02'},
                 'flows': {
-                    '00:00:00:00:00:00:00:02':{
+                    '00:00:00:00:00:00:00:02': {
                         'match': {'dl_src': 'ee:ee:ee:ee:ee:01'},
                         'table_id': 0
                     }
@@ -298,7 +310,7 @@ class TestMain:
                 'color': 2,
                 'neighbords': {'00:00:00:00:00:00:00:01'},
                 'flows': {
-                    '00:00:00:00:00:00:00:01':{
+                    '00:00:00:00:00:00:00:01': {
                         'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
                         'table_id': 0
                     }
@@ -317,6 +329,7 @@ class TestMain:
         self.napp.handle_link_disabled(link)
         assert mock_remove.call_count == 1
 
+    # pylint: disable=protected-access
     def test_remove_flow_mods(self):
         """Test _remove_flow_mods"""
         flows = {

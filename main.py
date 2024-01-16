@@ -134,7 +134,7 @@ class Main(KytosNApp):
 
         if switch_b_id == switch_a_id:
             return
-        
+
         with self._switches_lock:
             flow_mods = defaultdict(list)
             flow = self.switches[switch_a_id]['flows'][switch_b_id]
@@ -154,8 +154,19 @@ class Main(KytosNApp):
     def handle_switch_disabled(self, dpid):
         """Handle switch deletion. Links are expected to be disabled first
          therefore the deleted inner dictionary is expected to be empty with
-          no flows and neighbors."""
+         no flows and neighbors."""
         with self._switches_lock:
+            try:
+                sw_dct = self.switches[dpid]
+                if sw_dct['flows'] or sw_dct['neighbors']:
+                    log.error(f"There was an error cleanning up {dpid}. "
+                              "The fields 'flows' and 'neighbors' should be"
+                              " empty.")
+                    return
+            except KeyError as err:
+                log.error(f"Error while handling disabled switch: "
+                          f"Switch {err} not found.")
+                return
             self.switches.pop(dpid, None)
 
     def shutdown(self):
