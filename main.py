@@ -72,6 +72,8 @@ class Main(KytosNApp):
         with self._switches_lock:
             for switch in self.controller.switches.copy().values():
                 if not switch.is_enabled():
+                    if switch.dpid in self.switches:
+                        self.switches[switch.dpid]['neighbors'] = set()
                     continue
                 if switch.dpid not in self.switches:
                     color = int(switch.dpid.replace(':', '')[4:], 16)

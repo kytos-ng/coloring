@@ -107,17 +107,16 @@ class TestMain:
         topology_url = json_response['topology_url']
         assert topology_url.endswith("/api/kytos/topology/v3/links")
 
+    # pylint: disable=too-many-statements
     @patch('requests.post')
     def test_update_colors(self, req_post_mock):
         """Test method update_colors."""
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
         switch1.ofp_version = '0x04'
-        switch1.is_enabled = lambda: True
         switch2 = Mock()
         switch2.dpid = '00:00:00:00:00:00:00:02'
         switch2.ofp_version = '0x04'
-        switch2.is_enabled = lambda: True
 
         self.napp.controller.switches = {'1': switch1, '2': switch2}
 
@@ -145,24 +144,27 @@ class TestMain:
 
         assert not self.napp.switches
 
-        # Verify no flows with switches DOWN
-        switch1.status = EntityStatus.DOWN
-        switch2.status = EntityStatus.DOWN
-
-        self.napp.update_colors(links)
-
-        assert len(self.napp.switches) == 2
         dpid1 = '00:00:00:00:00:00:00:01'
         dpid2 = '00:00:00:00:00:00:00:02'
-        sw1 = self.napp.switches[dpid1]
-        sw2 = self.napp.switches[dpid2]
 
-        assert sw1['flows'] == {}
-        assert sw2['flows'] == {}
+        # Verify no switches with switches DOWN and disabled
+        switch1.status = EntityStatus.DOWN
+        switch2.status = EntityStatus.DOWN
+        switch1.is_enabled = lambda: False
+        switch2.is_enabled = lambda: False
+        links[0]['enabled'] = False
+        links[1]['enabled'] = False
+
+        self.napp.update_colors(links)
+        assert not self.napp.switches
 
         # Verify installed flows with colors
         switch1.status = EntityStatus.UP
         switch2.status = EntityStatus.UP
+        switch1.is_enabled = lambda: True
+        switch2.is_enabled = lambda: True
+        links[0]['enabled'] = True
+        links[1]['enabled'] = True
         self.napp.update_colors(links)
         sw1 = self.napp.switches[dpid1]
         sw2 = self.napp.switches[dpid2]
@@ -180,9 +182,26 @@ class TestMain:
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
         assert req_post_mock.call_count == 2
 
+        # Verify switches with no neighbors, flows cleanup is performed
+        # by handle_link_disabled()
+        switch1.status = EntityStatus.DOWN
+        switch2.status = EntityStatus.DOWN
+        switch1.is_enabled = lambda: False
+        switch2.is_enabled = lambda: False
+        links[0]['enabled'] = False
+        links[1]['enabled'] = False
+
+        self.napp.update_colors(links)
+
+        assert len(self.napp.switches) == 2
+        sw1 = self.napp.switches[dpid1]
+        sw2 = self.napp.switches[dpid2]
+        assert not sw1['neighbors']
+        assert not sw2['neighbors']
+
         # Next test we verify that the napp will not search
         # switch data again, because it is already cached.
-        links = [
+        links2 = [
             {
                 'endpoint_a': {'switch': switch1.dpid},
                 'endpoint_b': {'switch': switch1.dpid}
@@ -190,7 +209,7 @@ class TestMain:
         ]
 
         req_post_mock.reset_mock()
-        self.napp.update_colors(links)
+        self.napp.update_colors(links2)
         req_post_mock.assert_not_called()
 
     def test_update_colors_without_links(self):
