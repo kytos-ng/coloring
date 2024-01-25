@@ -6,6 +6,16 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Added
+=====
+- Subscribed to new event ``kytos/topology.link.disabled``, which triggers the deletion of neighbors and flows from each endpoint of the deleted link.
+- Subscribed to event ``kytos/topology.switch.disabled``, which deletes a disabled switch data on ``switches`` dictionary.
+
+Changed
+=======
+- ``coloring`` now deletes resources when a link or switch has been disabled.
+- ``coloring`` now does not recognize switches and links that are not enabled,
+
 [2023.1.0] - 2023-06-12
 ***********************
 

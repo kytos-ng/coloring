@@ -107,6 +107,7 @@ class TestMain:
         topology_url = json_response['topology_url']
         assert topology_url.endswith("/api/kytos/topology/v3/links")
 
+    # pylint: disable=too-many-statements
     @patch('requests.post')
     def test_update_colors(self, req_post_mock):
         """Test method update_colors."""
@@ -131,34 +132,39 @@ class TestMain:
         links = [
             {
                 'endpoint_a': {'switch': switch1.dpid},
-                'endpoint_b': {'switch': switch2.dpid}
+                'endpoint_b': {'switch': switch2.dpid},
+                'enabled': True
             },
             {
                 'endpoint_a': {'switch': switch1.dpid},
-                'endpoint_b': {'switch': switch1.dpid}
+                'endpoint_b': {'switch': switch1.dpid},
+                'enabled': True
             }
         ]
 
         assert not self.napp.switches
 
-        # Verify no flows with switches DOWN
-        switch1.status = EntityStatus.DOWN
-        switch2.status = EntityStatus.DOWN
-
-        self.napp.update_colors(links)
-
-        assert len(self.napp.switches) == 2
         dpid1 = '00:00:00:00:00:00:00:01'
         dpid2 = '00:00:00:00:00:00:00:02'
-        sw1 = self.napp.switches[dpid1]
-        sw2 = self.napp.switches[dpid2]
 
-        assert sw1['flows'] == {}
-        assert sw2['flows'] == {}
+        # Verify no switches with switches DOWN and disabled
+        switch1.status = EntityStatus.DOWN
+        switch2.status = EntityStatus.DOWN
+        switch1.is_enabled = lambda: False
+        switch2.is_enabled = lambda: False
+        links[0]['enabled'] = False
+        links[1]['enabled'] = False
+
+        self.napp.update_colors(links)
+        assert not self.napp.switches
 
         # Verify installed flows with colors
         switch1.status = EntityStatus.UP
         switch2.status = EntityStatus.UP
+        switch1.is_enabled = lambda: True
+        switch2.is_enabled = lambda: True
+        links[0]['enabled'] = True
+        links[1]['enabled'] = True
         self.napp.update_colors(links)
         sw1 = self.napp.switches[dpid1]
         sw2 = self.napp.switches[dpid2]
@@ -176,9 +182,26 @@ class TestMain:
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
         assert req_post_mock.call_count == 2
 
+        # Verify switches with no neighbors, flows cleanup is performed
+        # by handle_link_disabled()
+        switch1.status = EntityStatus.DOWN
+        switch2.status = EntityStatus.DOWN
+        switch1.is_enabled = lambda: False
+        switch2.is_enabled = lambda: False
+        links[0]['enabled'] = False
+        links[1]['enabled'] = False
+
+        self.napp.update_colors(links)
+
+        assert len(self.napp.switches) == 2
+        sw1 = self.napp.switches[dpid1]
+        sw2 = self.napp.switches[dpid2]
+        assert not sw1['neighbors']
+        assert not sw2['neighbors']
+
         # Next test we verify that the napp will not search
         # switch data again, because it is already cached.
-        links = [
+        links2 = [
             {
                 'endpoint_a': {'switch': switch1.dpid},
                 'endpoint_b': {'switch': switch1.dpid}
@@ -186,7 +209,7 @@ class TestMain:
         ]
 
         req_post_mock.reset_mock()
-        self.napp.update_colors(links)
+        self.napp.update_colors(links2)
         req_post_mock.assert_not_called()
 
     def test_update_colors_without_links(self):
@@ -264,3 +287,78 @@ class TestMain:
         assert "table_group" in flow
         assert "owner" in flow
         assert flow["table_id"] == 2
+
+    @patch('napps.amlight.coloring.main.log')
+    def test_handle_switch_disabled(self, mock_log):
+        """Test handle_switch_disabled"""
+        dpid = '00:00:00:00:00:00:00:01'
+        self.napp.switches = {'00:00:00:00:00:00:00:01': {
+            'color': 1,
+            'neighbors': set(),
+            'flows': {}
+        }}
+        self.napp.handle_switch_disabled(dpid)
+        assert not self.napp.switches
+
+        self.napp.switches = {'00:00:00:00:00:00:00:01': {
+            'color': 1,
+            'neighbors': {'00:00:00:00:00:00:00:02'},
+            'flows': {}
+        }}
+        self.napp.handle_switch_disabled(dpid)
+        assert mock_log.error.call_count == 1
+
+        self.napp.handle_switch_disabled("mock_switch")
+        assert mock_log.error.call_count == 2
+
+    @patch('napps.amlight.coloring.main.Main._remove_flow_mods')
+    def test_handle_link_disabled(self, mock_remove):
+        """Test handle_link_disabled"""
+        self.napp.switches = {
+            '00:00:00:00:00:00:00:01': {
+                'color': 1,
+                'neighbords': {'00:00:00:00:00:00:00:02'},
+                'flows': {
+                    '00:00:00:00:00:00:00:02': {
+                        'match': {'dl_src': 'ee:ee:ee:ee:ee:01'},
+                        'table_id': 0
+                    }
+                }
+            },
+            '00:00:00:00:00:00:00:02': {
+                'color': 2,
+                'neighbords': {'00:00:00:00:00:00:00:01'},
+                'flows': {
+                    '00:00:00:00:00:00:00:01': {
+                        'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
+                        'table_id': 0
+                    }
+                }
+            }
+        }
+        link = Mock()
+        link.endpoint_a.switch.dpid = '00:00:00:00:00:00:00:01'
+        link.endpoint_b.switch.dpid = '00:00:00:00:00:00:00:02'
+        self.napp.handle_link_disabled(link)
+        assert not self.napp.switches['00:00:00:00:00:00:00:01']['flows']
+        assert not self.napp.switches['00:00:00:00:00:00:00:02']['flows']
+        assert mock_remove.call_count == 1
+
+        link.endpoint_b.switch.dpid = '00:00:00:00:00:00:00:01'
+        self.napp.handle_link_disabled(link)
+        assert mock_remove.call_count == 1
+
+    # pylint: disable=protected-access
+    def test_remove_flow_mods(self):
+        """Test _remove_flow_mods"""
+        flows = {
+            "00:01": [{
+                'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
+                'table_id': 0
+            }]
+        }
+        self.napp._remove_flow_mods(flows)
+        args = self.napp.controller.buffers.app.put.call_args[0][0]
+        assert args.name == "kytos.flow_manager.flows.delete"
+        assert args.content['flow_dict']['flows'] == flows['00:01']
+        assert self.napp.controller.buffers.app.put.call_count == 1
