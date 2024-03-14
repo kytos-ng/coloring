@@ -6,6 +6,14 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Changed
+=======
+- Updated python environment installation from 3.9 to 3.11
+- Updated test dependencies
+
+[UNRELEASED] - Under development
+********************************
+
 Added
 =====
 - Subscribed to new event ``kytos/topology.link.disabled``, which triggers the deletion of neighbors and flows from each endpoint of the deleted link.
