@@ -6,6 +6,9 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2023.2.0] - 2024-02-16
+***********************
+
 Added
 =====
 - Subscribed to new event ``kytos/topology.link.disabled``, which triggers the deletion of neighbors and flows from each endpoint of the deleted link.
