@@ -28,7 +28,10 @@ To install this NApp, make sure to have the same venv activated as you have ``ky
 
    $ git clone https://github.com/kytos-ng/coloring.git
    $ cd coloring
-   $ python3 setup.py develop
+   $ python3 -m pip install --editable .
+
+To install the kytos environment, please follow our
+`development environment setup <https://github.com/kytos-ng/documentation/blob/master/tutorials/napps/development_environment_setup.rst>`_.
 
 Requirements
 ============

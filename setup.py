@@ -274,7 +274,7 @@ setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       author='Amlight Team',
       author_email='antonio@amlight.net',
       license='MIT',
-      install_requires=read_requirements() + ["setuptools >= 59.6.0"],
+      install_requires=read_requirements() + ['importlib_metadata'],
       packages=[],
       cmdclass={
           'clean': Cleaner,
@@ -289,6 +289,6 @@ setup(name=f'{NAPP_USERNAME}_{NAPP_NAME}',
       classifiers=[
           'License :: OSI Approved :: MIT License',
           'Operating System :: POSIX :: Linux',
-          'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.11',
           'Topic :: System :: Networking',
       ])
