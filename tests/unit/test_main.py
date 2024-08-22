@@ -1,5 +1,5 @@
 """Test the Main class."""
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock, patch, MagicMock
 
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
@@ -14,19 +14,25 @@ async def test_on_table_enabled():
     controller = get_controller_mock()
     controller.buffers.app.aput = AsyncMock()
     napp = Main(controller)
+    napp.update_switches_table = MagicMock()
     content = {"coloring": {"base": 123}}
     event = KytosEvent(name="kytos/of_multi_table.enable_table",
                        content=content)
     await napp.on_table_enabled(event)
     assert napp.table_group == content["coloring"]
     assert controller.buffers.app.aput.call_count == 1
+    napp.update_switches_table.assert_called_once()
+
+    await napp.on_table_enabled(event)
+    assert controller.buffers.app.aput.call_count == 2
+    napp.update_switches_table.assert_called_once()
 
     # Failure at setting table groups
     content = {"coloring": {"unknown": 123}}
     event = KytosEvent(name="kytos/of_multi_table.enable_table",
                        content=content)
     await napp.on_table_enabled(event)
-    assert controller.buffers.app.aput.call_count == 1
+    assert controller.buffers.app.aput.call_count == 2
 
 
 class TestMain:
@@ -362,3 +368,23 @@ class TestMain:
         assert args.name == "kytos.flow_manager.flows.delete"
         assert args.content['flow_dict']['flows'] == flows['00:01']
         assert self.napp.controller.buffers.app.put.call_count == 1
+
+    def test_update_switches_table(self):
+        """Test update_switches_table"""
+        sw1 = '00:00:00:00:00:00:00:01'
+        sw2 = '00:00:00:00:00:00:00:02'
+        sw3 = '00:00:00:00:00:00:00:03'
+        switches = {sw1: {
+            'color': 1,
+            'neighbors': {sw2, sw3},
+            'flows': {
+                sw3: {'table_id': 0, 'table_group': 'base'},
+                sw2: {'table_id': 0, 'table_group': 'mock'}
+            }
+        }}
+        self.napp.switches = switches
+        self.napp.table_group = {'base': 2, 'mock': 5}
+        self.napp.update_switches_table()
+        flows = switches[sw1]['flows']
+        assert flows[sw3]['table_id'] == self.napp.table_group['base']
+        assert flows[sw2]['table_id'] == self.napp.table_group['mock']

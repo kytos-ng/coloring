@@ -142,11 +142,13 @@ class Main(KytosNApp):
             flow = self.switches[switch_a_id]['flows'][switch_b_id]
             flow_mods[switch_a_id].append({
                 "table_id": flow['table_id'],
+                "owner": 'coloring',
                 "match": flow['match']
             })
             flow = self.switches[switch_b_id]['flows'][switch_a_id]
             flow_mods[switch_b_id].append({
                 "table_id": flow['table_id'],
+                "owner": 'coloring',
                 "match": flow['match']
             })
             self.switches[switch_a_id]['flows'].pop(switch_b_id)
@@ -288,8 +290,19 @@ class Main(KytosNApp):
                           f'coloring. Allowed table groups are '
                           f'{settings.TABLE_GROUP_ALLOWED}')
                 return
-        self.table_group.update(table_group)
+        if table_group != self.table_group:
+            self.table_group.update(table_group)
+            self.update_switches_table()
         content = {"group_table": self.table_group}
         event_out = KytosEvent(name="kytos/coloring.enable_table",
                                content=content)
         await self.controller.buffers.app.aput(event_out)
+
+    def update_switches_table(self):
+        """Update switch flow table ids when a pipeline is enabled."""
+        with self._switches_lock:
+            for _, content in self.switches.items():
+                flows = content["flows"]
+                for _, flow in flows.items():
+                    group = flow['table_group']
+                    flow['table_id'] = self.table_group[group]
