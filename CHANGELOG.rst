@@ -6,6 +6,14 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2024.1.1] - 2024-08-23
+***********************
+
+Fixed
+=====
+- Update switches flows when table group changes values.
+- Flow mods for deletion now send owner.
+
 [2024.1.0] - 2024-07-23
 ***********************
 
