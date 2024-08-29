@@ -9,8 +9,7 @@ NApp to color a network topology
 import struct
 from threading import Lock
 from collections import defaultdict
-
-import requests
+import httpx
 from kytos.core import KytosNApp, log, rest
 from kytos.core.common import EntityStatus
 from kytos.core.helpers import listen_to, alisten_to
@@ -219,10 +218,15 @@ class Main(KytosNApp):
     def _send_flow_mods(self, dpid_flows: dict) -> None:
         """Send FlowMods."""
         for dpid, flows in dpid_flows.items():
-            res = requests.post(
-                self._flow_manager_url % dpid,
-                json={'flows': flows, 'force': True}
-            )
+            try:
+                res = httpx.post(
+                    self._flow_manager_url % dpid,
+                    json={'flows': flows, 'force': True},
+                    timeout=10
+                )
+            except httpx.TimeoutException as err:
+                log.error(f"Failed to post flows, error: {err}")
+                continue
             if res.status_code // 100 != 2:
                 log.error(f'Flow manager returned an error inserting '
                           f'flows {flows}. Status code {res.status_code} '

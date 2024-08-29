@@ -1,6 +1,6 @@
 """Test the Main class."""
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
-
+from httpx import TimeoutException
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
 from kytos.core.common import EntityStatus
@@ -114,8 +114,8 @@ class TestMain:
         assert topology_url.endswith("/api/kytos/topology/v3/links")
 
     # pylint: disable=too-many-statements
-    @patch('requests.post')
-    def test_update_colors(self, req_post_mock):
+    @patch('httpx.post')
+    def test_update_colors(self, httpx_post_mock):
         """Test method update_colors."""
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
@@ -186,7 +186,7 @@ class TestMain:
         assert sw2['flows'][dpid1]['cookie'] == cookie
 
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
-        assert req_post_mock.call_count == 2
+        assert httpx_post_mock.call_count == 2
 
         # Verify switches with no neighbors, flows cleanup is performed
         # by handle_link_disabled()
@@ -214,9 +214,19 @@ class TestMain:
             }
         ]
 
-        req_post_mock.reset_mock()
+        httpx_post_mock.reset_mock()
         self.napp.update_colors(links2)
-        req_post_mock.assert_not_called()
+        httpx_post_mock.assert_not_called()
+
+    # pylint: disable=protected-access
+    @patch('napps.amlight.coloring.main.log')
+    @patch('httpx.post')
+    def test_send_flow_mods_error(self, post_mock, mock_log):
+        """Test _send_flow_mods with Timeout exception"""
+        flows = {'00:01': ['mock_flow']}
+        post_mock.side_effect = TimeoutException('Timeout')
+        self.napp._send_flow_mods(flows)
+        assert mock_log.error.call_count == 1
 
     def test_update_colors_without_links(self):
         """Test method update_colors without links."""
