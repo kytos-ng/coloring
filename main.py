@@ -217,20 +217,21 @@ class Main(KytosNApp):
     # pylint: disable=missing-timeout
     def _send_flow_mods(self, dpid_flows: dict) -> None:
         """Send FlowMods."""
-        for dpid, flows in dpid_flows.items():
-            try:
-                res = httpx.post(
-                    self._flow_manager_url % dpid,
-                    json={'flows': flows, 'force': True},
-                    timeout=10
-                )
-            except httpx.TimeoutException as err:
-                log.error(f"Failed to post flows, error: {err}")
-                continue
-            if res.status_code // 100 != 2:
-                log.error(f'Flow manager returned an error inserting '
-                          f'flows {flows}. Status code {res.status_code} '
-                          f'on dpid {dpid}')
+        with httpx.Client() as client:
+            for dpid, flows in dpid_flows.items():
+                try:
+                    res = client.post(
+                        self._flow_manager_url % dpid,
+                        json={'flows': flows, 'force': True},
+                        timeout=10
+                    )
+                except httpx.TimeoutException as err:
+                    log.error(f"Failed to post flows, error: {err}")
+                    continue
+                if res.status_code // 100 != 2:
+                    log.error(f'Flow manager returned an error inserting '
+                              f'flows {flows}. Status code {res.status_code} '
+                              f'on dpid {dpid}')
 
     def _remove_flow_mods(self, flows: dict, force: bool = True) -> None:
         """Remove FlowMods"""

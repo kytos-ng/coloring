@@ -113,10 +113,11 @@ class TestMain:
         topology_url = json_response['topology_url']
         assert topology_url.endswith("/api/kytos/topology/v3/links")
 
-    # pylint: disable=too-many-statements
-    @patch('httpx.post')
-    def test_update_colors(self, httpx_post_mock):
+    # pylint: disable=too-many-statements, unnecessary-dunder-call
+    @patch('httpx.Client')
+    def test_update_colors(self, client_mock):
         """Test method update_colors."""
+        post_mock = client_mock().__enter__().post
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
         switch1.ofp_version = '0x04'
@@ -186,7 +187,7 @@ class TestMain:
         assert sw2['flows'][dpid1]['cookie'] == cookie
 
         # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
-        assert httpx_post_mock.call_count == 2
+        assert post_mock.call_count == 2
 
         # Verify switches with no neighbors, flows cleanup is performed
         # by handle_link_disabled()
@@ -214,15 +215,16 @@ class TestMain:
             }
         ]
 
-        httpx_post_mock.reset_mock()
+        post_mock.reset_mock()
         self.napp.update_colors(links2)
-        httpx_post_mock.assert_not_called()
+        post_mock.assert_not_called()
 
-    # pylint: disable=protected-access
+    # pylint: disable=protected-access, unnecessary-dunder-call
     @patch('napps.amlight.coloring.main.log')
-    @patch('httpx.post')
-    def test_send_flow_mods_error(self, post_mock, mock_log):
+    @patch('httpx.Client')
+    def test_send_flow_mods_error(self, client_mock, mock_log):
         """Test _send_flow_mods with Timeout exception"""
+        post_mock = client_mock().__enter__().post
         flows = {'00:01': ['mock_flow']}
         post_mock.side_effect = TimeoutException('Timeout')
         self.napp._send_flow_mods(flows)
