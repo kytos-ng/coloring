@@ -364,13 +364,13 @@ class TestMain:
         }
         self.napp._send_flow_mods(flows, "delete")
         args = self.napp.controller.buffers.app.put.call_args[0][0]
-        assert args.name == "kytos.flow_manager.flows.delete"
+        assert args.name == "kytos.flow_manager.flows.single.delete"
         assert args.content['flow_dict']['flows'] == flows['00:01']
         assert self.napp.controller.buffers.app.put.call_count == 1
 
         self.napp._send_flow_mods(flows, "install")
         args = self.napp.controller.buffers.app.put.call_args[0][0]
-        assert args.name == "kytos.flow_manager.flows.install"
+        assert args.name == "kytos.flow_manager.flows.single.install"
         assert args.content['flow_dict']['flows'] == flows['00:01']
         assert self.napp.controller.buffers.app.put.call_count == 2
 

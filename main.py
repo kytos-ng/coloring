@@ -219,7 +219,7 @@ class Main(KytosNApp):
     ) -> None:
         """Remove FlowMods"""
         for dpid, mod_flows in flows.items():
-            name = f"kytos.flow_manager.flows.{action}"
+            name = f"kytos.flow_manager.flows.single.{action}"
             content = {
                 'dpid': dpid,
                 'flow_dict': {'flows': mod_flows},
