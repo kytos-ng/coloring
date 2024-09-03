@@ -128,7 +128,7 @@ class Main(KytosNApp):
         self._send_flow_mods(dpid_flows, "install")
 
     def handle_link_disabled(self, link):
-        """Handle link deletion. Deletes only flows from the proper switches.
+        """Handle link disabling. Deletes only flows from the proper switches.
          The field 'neighbors' is managed by update_colors method."""
         switch_a_id = link.endpoint_a.switch.dpid
         switch_b_id = link.endpoint_b.switch.dpid
