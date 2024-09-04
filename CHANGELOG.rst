@@ -6,6 +6,13 @@ All notable changes to the coloring NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2024.1.2] - 2024-08-30
+***********************
+
+Changed
+=======
+- Flow installation is done through events now.
+
 [2024.1.1] - 2024-08-23
 ***********************
 

@@ -1,6 +1,5 @@
 """Test the Main class."""
 from unittest.mock import AsyncMock, Mock, patch, MagicMock
-
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
 from kytos.core.common import EntityStatus
@@ -114,8 +113,7 @@ class TestMain:
         assert topology_url.endswith("/api/kytos/topology/v3/links")
 
     # pylint: disable=too-many-statements
-    @patch('requests.post')
-    def test_update_colors(self, req_post_mock):
+    def test_update_colors(self):
         """Test method update_colors."""
         switch1 = Mock()
         switch1.dpid = '00:00:00:00:00:00:00:01'
@@ -185,8 +183,9 @@ class TestMain:
         cookie = self.napp.get_cookie(switch2.dpid)
         assert sw2['flows'][dpid1]['cookie'] == cookie
 
-        # Tests that the FLOW_MANAGER_URL was called twice to insert flow.
-        assert req_post_mock.call_count == 2
+        put_mock = self.napp.controller.buffers.app.put
+        # Tests that the FLOW_MANAGER_URL was called twice to insert flow
+        assert put_mock.call_count == 2
 
         # Verify switches with no neighbors, flows cleanup is performed
         # by handle_link_disabled()
@@ -214,9 +213,9 @@ class TestMain:
             }
         ]
 
-        req_post_mock.reset_mock()
+        put_mock.reset_mock()
         self.napp.update_colors(links2)
-        req_post_mock.assert_not_called()
+        put_mock.assert_not_called()
 
     def test_update_colors_without_links(self):
         """Test method update_colors without links."""
@@ -317,8 +316,8 @@ class TestMain:
         self.napp.handle_switch_disabled("mock_switch")
         assert mock_log.error.call_count == 2
 
-    @patch('napps.amlight.coloring.main.Main._remove_flow_mods')
-    def test_handle_link_disabled(self, mock_remove):
+    @patch('napps.amlight.coloring.main.Main._send_flow_mods')
+    def test_handle_link_disabled(self, mock_send_flow):
         """Test handle_link_disabled"""
         self.napp.switches = {
             '00:00:00:00:00:00:00:01': {
@@ -348,26 +347,32 @@ class TestMain:
         self.napp.handle_link_disabled(link)
         assert not self.napp.switches['00:00:00:00:00:00:00:01']['flows']
         assert not self.napp.switches['00:00:00:00:00:00:00:02']['flows']
-        assert mock_remove.call_count == 1
+        assert mock_send_flow.call_count == 1
 
         link.endpoint_b.switch.dpid = '00:00:00:00:00:00:00:01'
         self.napp.handle_link_disabled(link)
-        assert mock_remove.call_count == 1
+        assert mock_send_flow.call_count == 1
 
     # pylint: disable=protected-access
-    def test_remove_flow_mods(self):
-        """Test _remove_flow_mods"""
+    def test_send_flow_mods(self):
+        """Test _send_flow_mods"""
         flows = {
             "00:01": [{
                 'match': {'dl_src': 'ee:ee:ee:ee:ee:02'},
                 'table_id': 0
             }]
         }
-        self.napp._remove_flow_mods(flows)
+        self.napp._send_flow_mods(flows, "delete")
         args = self.napp.controller.buffers.app.put.call_args[0][0]
-        assert args.name == "kytos.flow_manager.flows.delete"
+        assert args.name == "kytos.flow_manager.flows.single.delete"
         assert args.content['flow_dict']['flows'] == flows['00:01']
         assert self.napp.controller.buffers.app.put.call_count == 1
+
+        self.napp._send_flow_mods(flows, "install")
+        args = self.napp.controller.buffers.app.put.call_args[0][0]
+        assert args.name == "kytos.flow_manager.flows.single.install"
+        assert args.content['flow_dict']['flows'] == flows['00:01']
+        assert self.napp.controller.buffers.app.put.call_count == 2
 
     def test_update_switches_table(self):
         """Test update_switches_table"""

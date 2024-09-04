@@ -10,7 +10,6 @@ import struct
 from threading import Lock
 from collections import defaultdict
 
-import requests
 from kytos.core import KytosNApp, log, rest
 from kytos.core.common import EntityStatus
 from kytos.core.helpers import listen_to, alisten_to
@@ -126,10 +125,10 @@ class Main(KytosNApp):
                         switch_dict['flows'][neighbor] = flow_dict
                         dpid_flows[dpid].append(flow_dict)
 
-        self._send_flow_mods(dpid_flows)
+        self._send_flow_mods(dpid_flows, "install")
 
     def handle_link_disabled(self, link):
-        """Handle link deletion. Deletes only flows from the proper switches.
+        """Handle link disabling. Deletes only flows from the proper switches.
          The field 'neighbors' is managed by update_colors method."""
         switch_a_id = link.endpoint_a.switch.dpid
         switch_b_id = link.endpoint_b.switch.dpid
@@ -153,7 +152,7 @@ class Main(KytosNApp):
             })
             self.switches[switch_a_id]['flows'].pop(switch_b_id)
             self.switches[switch_b_id]['flows'].pop(switch_a_id)
-        self._remove_flow_mods(flow_mods)
+        self._send_flow_mods(flow_mods, "delete")
 
     def handle_switch_disabled(self, dpid):
         """Handle switch deletion. Links are expected to be disabled first
@@ -215,23 +214,12 @@ class Main(KytosNApp):
                                 )}
             return colors
 
-    # pylint: disable=missing-timeout
-    def _send_flow_mods(self, dpid_flows: dict) -> None:
-        """Send FlowMods."""
-        for dpid, flows in dpid_flows.items():
-            res = requests.post(
-                self._flow_manager_url % dpid,
-                json={'flows': flows, 'force': True}
-            )
-            if res.status_code // 100 != 2:
-                log.error(f'Flow manager returned an error inserting '
-                          f'flows {flows}. Status code {res.status_code} '
-                          f'on dpid {dpid}')
-
-    def _remove_flow_mods(self, flows: dict, force: bool = True) -> None:
+    def _send_flow_mods(
+        self, flows: dict, action: str, force: bool = True
+    ) -> None:
         """Remove FlowMods"""
         for dpid, mod_flows in flows.items():
-            name = "kytos.flow_manager.flows.delete"
+            name = f"kytos.flow_manager.flows.single.{action}"
             content = {
                 'dpid': dpid,
                 'flow_dict': {'flows': mod_flows},
