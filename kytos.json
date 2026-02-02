@@ -3,7 +3,7 @@
   "username": "amlight",
   "name": "coloring",
   "description": "NApp to color a network topology",
-  "version": "2025.1.0",
+  "version": "2025.2.0",
   "napp_dependencies": ["kytos/topology", "kytos/flow_manager"],
   "license": "MIT",
   "tags": [],
